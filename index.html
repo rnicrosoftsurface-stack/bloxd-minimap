@@ -1,116 +1,3394 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <title>Bloxd Minimap</title>
+<title>Bloxd Minimap</title>
 
-    <style>
-        body {
-            margin: 0;
-            min-height: 100vh;
-            background: #070d14;
-            color: white;
-            font-family: Arial, sans-serif;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
+<style>
+:root {
+    color-scheme: dark;
 
-        .box {
-            width: 420px;
-            padding: 25px;
-            background: #0d1723;
-            border: 1px solid #26384b;
-            border-radius: 16px;
-        }
+    --bg: #070d14;
+    --panel: #0c1621;
+    --line: #26384b;
+    --text: #eef5ff;
+    --muted: #8ea1b5;
+    --accent: #5ee4ff;
+    --green: #4cff91;
+    --yellow: #ffd166;
+    --red: #ff5f68;
+}
 
-        h1 {
-            margin-top: 0;
-        }
+* {
+    box-sizing: border-box;
+}
 
-        .status {
-            margin-top: 12px;
-            padding: 10px;
-            background: #071019;
-            border-radius: 8px;
-            font-family: monospace;
-        }
+body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--bg);
+    color: var(--text);
+    font-family: Inter, Segoe UI, Arial, sans-serif;
+}
 
-        .ok {
-            color: #4cff91;
-        }
+.wrap {
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 24px;
+}
 
-        .error {
-            color: #ff5f68;
-        }
-    </style>
+.panel {
+    background: linear-gradient(180deg, #0f1b28, #09121b);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    box-shadow: 0 20px 60px #0008;
+    overflow: hidden;
+}
+
+.top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+
+    padding: 14px 16px;
+
+    border-bottom: 1px solid #ffffff12;
+
+    flex-wrap: wrap;
+}
+
+.title {
+    font-weight: 900;
+    letter-spacing: .08em;
+}
+
+.sub {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 3px;
+}
+
+.controls {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+button,
+input {
+    font: inherit;
+}
+
+button {
+    border: 1px solid #ffffff20;
+    background: #0c1723;
+    color: #eaf4ff;
+
+    border-radius: 8px;
+
+    padding: 8px 10px;
+
+    font-weight: 800;
+
+    cursor: pointer;
+}
+
+button:hover {
+    background: #132235;
+}
+
+button.active {
+    outline: 2px solid #5ee4ff55;
+    border-color: #5ee4ff;
+    color: #7debff;
+}
+
+.radius {
+    font: 800 12px Consolas, monospace;
+    color: #b8c8d8;
+
+    min-width: 38px;
+
+    text-align: center;
+}
+
+.inputs {
+    display: grid;
+
+    grid-template-columns:
+        1.2fr
+        repeat(3, 1fr)
+        auto;
+
+    gap: 8px;
+
+    padding: 12px 16px;
+
+    border-bottom: 1px solid #ffffff0d;
+}
+
+.field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.field label {
+    font-size: 10px;
+    font-weight: 800;
+    color: #71839a;
+}
+
+.field input {
+    width: 100%;
+
+    background: #071019;
+
+    border: 1px solid #ffffff18;
+
+    border-radius: 8px;
+
+    color: white;
+
+    padding: 9px;
+}
+
+.maprow {
+    display: grid;
+
+    grid-template-columns:
+        minmax(0, 1fr)
+        250px;
+
+    gap: 14px;
+
+    padding: 14px;
+}
+
+.canvasbox {
+    display: flex;
+
+    align-items: center;
+    justify-content: center;
+
+    min-width: 0;
+}
+
+canvas {
+    width: min(640px, 100%);
+    aspect-ratio: 1 / 1;
+
+    background: #071019;
+
+    border: 1px solid #ffffff18;
+
+    border-radius: 12px;
+
+    image-rendering: pixelated;
+}
+
+.side {
+    display: flex;
+    flex-direction: column;
+
+    gap: 10px;
+}
+
+.card {
+    background: #08111a;
+
+    border: 1px solid #ffffff12;
+
+    border-radius: 10px;
+
+    padding: 10px;
+
+    font-size: 12px;
+}
+
+.mono {
+    font-family: Consolas, monospace;
+}
+
+.ok {
+    color: var(--green);
+}
+
+.warn {
+    color: var(--yellow);
+}
+
+.bad {
+    color: var(--red);
+}
+
+.legend {
+    display: grid;
+
+    grid-template-columns:
+        1fr
+        1fr;
+
+    gap: 6px;
+
+    font-size: 11px;
+}
+
+.dot {
+    display: inline-block;
+
+    width: 9px;
+    height: 9px;
+
+    margin-right: 5px;
+
+    border-radius: 2px;
+
+    vertical-align: -1px;
+}
+
+.hint {
+    font-size: 11px;
+
+    color: var(--muted);
+
+    line-height: 1.45;
+}
+
+@media (max-width: 760px) {
+
+    .maprow {
+        grid-template-columns: 1fr;
+    }
+
+    .inputs {
+        grid-template-columns:
+            1fr
+            1fr;
+    }
+
+    .inputs .seed {
+        grid-column: 1 / -1;
+    }
+
+    .inputs button {
+        grid-column: 1 / -1;
+    }
+
+    .side {
+        order: -1;
+    }
+
+    .wrap {
+        padding: 10px;
+    }
+}
+</style>
 </head>
 
 <body>
 
-<div class="box">
-    <h1>Bloxd Minimap</h1>
+<div class="wrap">
 
-    <p>GitHub-Version ohne localhost</p>
+<div class="panel">
 
-    <div id="status" class="status">
-        Prüfe Dateien...
+    <div class="top">
+
+        <div>
+
+            <div class="title">
+                BLOXD MINIMAP
+            </div>
+
+            <div class="sub">
+                GitHub-Version • ohne localhost
+            </div>
+
+        </div>
+
+
+        <div class="controls">
+
+            <button id="y1">
+                Y+1
+            </button>
+
+            <button id="y3">
+                +Y3
+            </button>
+
+            <button id="allY">
+                ◇ ALL Y
+            </button>
+
+            <button id="minus">
+                −
+            </button>
+
+            <div
+                id="radius"
+                class="radius"
+            >
+                R30
+            </div>
+
+            <button id="plus">
+                +
+            </button>
+
+        </div>
+
     </div>
+
+
+    <div class="inputs">
+
+        <div class="field seed">
+
+            <label>
+                SEED / LOBBY
+            </label>
+
+            <input
+                id="seed"
+                value="1234"
+            >
+
+        </div>
+
+
+        <div class="field">
+
+            <label>
+                X
+            </label>
+
+            <input
+                id="x"
+                type="number"
+                step="0.01"
+                value="0"
+            >
+
+        </div>
+
+
+        <div class="field">
+
+            <label>
+                Y
+            </label>
+
+            <input
+                id="y"
+                type="number"
+                step="0.01"
+                value="-85"
+            >
+
+        </div>
+
+
+        <div class="field">
+
+            <label>
+                Z
+            </label>
+
+            <input
+                id="z"
+                type="number"
+                step="0.01"
+                value="0"
+            >
+
+        </div>
+
+
+        <button id="go">
+            KARTE LADEN
+        </button>
+
+    </div>
+
+
+    <div class="maprow">
+
+        <div class="canvasbox">
+
+            <canvas
+                id="map"
+                width="640"
+                height="640"
+            ></canvas>
+
+        </div>
+
+
+        <div class="side">
+
+            <div class="card mono">
+
+                <div
+                    id="status"
+                    class="warn"
+                >
+                    ENGINE LÄDT…
+                </div>
+
+                <div
+                    id="coords"
+                    style="margin-top:7px"
+                >
+                    X 0.00 • Y -85.00 • Z 0.00
+                </div>
+
+                <div
+                    id="mode"
+                    style="
+                        margin-top:5px;
+                        color:#7debff
+                    "
+                >
+                    UNDERGROUND
+                </div>
+
+            </div>
+
+
+            <div class="card mono">
+
+                <b>
+                    ORIENTIERUNG
+                </b>
+
+                <br><br>
+
+                <div style="text-align:center">
+                    +X ↑
+                </div>
+
+                <div
+                    style="
+                        display:flex;
+                        justify-content:space-between
+                    "
+                >
+
+                    <span>
+                        +Z ←
+                    </span>
+
+                    <span>
+                        → -Z
+                    </span>
+
+                </div>
+
+                <div style="text-align:center">
+                    ↓ -X
+                </div>
+
+            </div>
+
+
+            <div
+                class="card mono"
+                id="hover"
+            >
+                Maus über Karte → Blockname
+            </div>
+
+
+            <div class="card">
+
+                <div class="legend">
+
+                    <div>
+                        <span
+                            class="dot"
+                            style="background:#747b83"
+                        ></span>
+                        Stone
+                    </div>
+
+                    <div>
+                        <span
+                            class="dot"
+                            style="background:#218cff"
+                        ></span>
+                        Diamond
+                    </div>
+
+                    <div>
+                        <span
+                            class="dot"
+                            style="background:#ff3344"
+                        ></span>
+                        Moonstone
+                    </div>
+
+                    <div>
+                        <span
+                            class="dot"
+                            style="background:#f5f5f5"
+                        ></span>
+                        Iron
+                    </div>
+
+                    <div>
+                        <span
+                            class="dot"
+                            style="background:#050608"
+                        ></span>
+                        Coal
+                    </div>
+
+                    <div>
+                        <span
+                            class="dot"
+                            style="background:#f2c230"
+                        ></span>
+                        Gold
+                    </div>
+
+                    <div>
+                        <span
+                            class="dot"
+                            style="background:#f05b16"
+                        ></span>
+                        Lava
+                    </div>
+
+                    <div>
+                        <span
+                            class="dot"
+                            style="background:#163c88"
+                        ></span>
+                        Water
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <div class="card hint">
+
+                Trage oben deine sichtbaren
+                X/Y/Z-Koordinaten aus Bloxd ein
+                und drücke
+
+                <b>
+                    Karte laden
+                </b>.
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
 </div>
 
 
 <script>
-async function testFiles() {
+(() => {
 
-    const files = [
-        "blockMetadata.js",
-        "itemMetadata.js",
-        "webWorkerBloxd.js"
-    ];
+"use strict";
 
-    const status =
-        document.getElementById("status");
 
-    let output = "";
+const CHUNK =
+    32;
 
-    for (const file of files) {
+const MAP =
+    640;
 
-        try {
+const DIAMOND =
+    45;
 
-            const response =
-                await fetch("./" + file);
+const MOONSTONE =
+    465;
 
-            if (!response.ok) {
-                throw new Error(
-                    "HTTP " + response.status
-                );
-            }
 
-            const text =
-                await response.text();
+const ZOOMS = [
+    3,
+    5,
+    10,
+    15,
+    20,
+    25,
+    30,
+    35,
+    40,
+    45,
+    50
+];
 
-            if (text.length < 100) {
-                throw new Error(
-                    "Datei ist zu klein"
-                );
-            }
 
-            output +=
-                `<div class="ok">✓ ${file}</div>`;
+const ALL_Y_LEVELS = [
+    -4,
+    -3,
+    -2
+];
 
-        } catch (error) {
 
-            output +=
-                `<div class="error">✕ ${file}</div>`;
+const SURFACE_MIN_Y =
+    -16;
+
+
+let radius =
+    30;
+
+let showY1 =
+    false;
+
+let showY3 =
+    false;
+
+let showAllY =
+    false;
+
+
+let seed =
+    1234;
+
+let pos = [
+    0,
+    -85,
+    0
+];
+
+
+let bmd =
+    null;
+
+let imd =
+    null;
+
+let workerFn =
+    null;
+
+let worker =
+    null;
+
+let workerSeed =
+    null;
+
+
+const chunks =
+    new Map();
+
+const pending =
+    new Map();
+
+const names =
+    new Map();
+
+const texts =
+    new Map();
+
+const oreCache =
+    new Map();
+
+
+const canvas =
+    document.getElementById(
+        "map"
+    );
+
+
+const ctx =
+    canvas.getContext(
+        "2d",
+        {
+            alpha:
+                false
+        }
+    );
+
+
+const status =
+    document.getElementById(
+        "status"
+    );
+
+
+const coords =
+    document.getElementById(
+        "coords"
+    );
+
+
+const modeEl =
+    document.getElementById(
+        "mode"
+    );
+
+
+const hover =
+    document.getElementById(
+        "hover"
+    );
+
+
+const radiusEl =
+    document.getElementById(
+        "radius"
+    );
+
+
+// =====================================================
+// BASIC HELPERS
+// =====================================================
+
+function floorDiv(
+    value,
+    divisor
+) {
+
+    return Math.floor(
+        value /
+        divisor
+    );
+}
+
+
+function mod(
+    value,
+    divisor
+) {
+
+    return (
+        (
+            value %
+            divisor
+        )
+        +
+        divisor
+    )
+    %
+    divisor;
+}
+
+
+function chunkKey(
+    cx,
+    cy,
+    cz
+) {
+
+    return (
+        seed +
+        "|" +
+        cx +
+        "|" +
+        cy +
+        "|" +
+        cz
+    );
+}
+
+
+function normalSeed(value) {
+
+    const string =
+        String(
+            value
+        )
+        .trim();
+
+
+    if (
+        /^-?\d+$/.test(
+            string
+        )
+    ) {
+
+        const number =
+            Number(
+                string
+            );
+
+
+        if (
+            Number.isSafeInteger(
+                number
+            )
+        ) {
+
+            return number;
         }
     }
 
-    status.innerHTML = output;
+
+    return string;
 }
 
-testFiles();
+
+function getMode() {
+
+    return (
+        Math.floor(
+            pos[1]
+        )
+        >=
+        SURFACE_MIN_Y
+    )
+        ?
+        "surface"
+        :
+        "underground";
+}
+
+
+// =====================================================
+// Y MODES
+// =====================================================
+
+function getLayers() {
+
+    const y =
+        Math.floor(
+            pos[1]
+        );
+
+
+    const output = [
+        y
+    ];
+
+
+    if (
+        getMode() ===
+        "underground"
+    ) {
+
+        if (
+            showY1
+        ) {
+
+            output.push(
+                y + 1
+            );
+        }
+
+
+        if (
+            showY3
+        ) {
+
+            output.push(
+                y + 1,
+                y + 2,
+                y - 1
+            );
+        }
+    }
+
+
+    return [
+        ...new Set(
+            output
+        )
+    ];
+}
+
+
+// =====================================================
+// LOAD GENERATOR
+// =====================================================
+
+function extractVariable(
+    source,
+    variableName
+) {
+
+    return new Function(
+
+        source +
+
+        `
+
+        return (
+            typeof ${variableName}
+            !==
+            "undefined"
+        )
+            ?
+            ${variableName}
+            :
+            window[
+                ${JSON.stringify(variableName)}
+            ];
+
+        `
+    )();
+}
+
+
+async function loadEngine() {
+
+    try {
+
+        status.textContent =
+            "ENGINE LÄDT…";
+
+        status.className =
+            "warn";
+
+
+        const [
+            workerSource,
+            blockSource,
+            itemSource
+        ] =
+        await Promise.all(
+
+            [
+                "webWorkerBloxd.js",
+                "blockMetadata.js",
+                "itemMetadata.js"
+            ]
+
+            .map(
+                async file => {
+
+                    const response =
+                        await fetch(
+                            "./" +
+                            file
+                        );
+
+
+                    if (
+                        !response.ok
+                    ) {
+
+                        throw new Error(
+                            file +
+                            ": HTTP " +
+                            response.status
+                        );
+                    }
+
+
+                    return await response.text();
+                }
+            )
+        );
+
+
+        workerFn =
+            extractVariable(
+                workerSource,
+                "webWorkerCodeFunction"
+            );
+
+
+        bmd =
+            extractVariable(
+                blockSource,
+                "bmd"
+            );
+
+
+        imd =
+            extractVariable(
+                itemSource,
+                "imd"
+            );
+
+
+        buildBlockIndex();
+
+        createWorker();
+
+
+        status.textContent =
+            "ENGINE ✓";
+
+        status.className =
+            "ok";
+
+
+        await refresh();
+
+    }
+    catch (
+        error
+    ) {
+
+        console.error(
+            error
+        );
+
+
+        status.textContent =
+            "ENGINE ✕ " +
+            error.message;
+
+        status.className =
+            "bad";
+
+
+        drawText(
+            "ENGINE ERROR"
+        );
+    }
+}
+
+
+// =====================================================
+// BLOCK METADATA
+// =====================================================
+
+function buildBlockIndex() {
+
+    names.clear();
+
+    texts.clear();
+
+
+    for (
+        const [
+            blockName,
+            entry
+        ]
+        of
+        Object.entries(
+            bmd ||
+            {}
+        )
+    ) {
+
+        const id =
+            Number(
+                entry?.id
+            );
+
+
+        if (
+            !Number.isFinite(
+                id
+            )
+        ) {
+
+            continue;
+        }
+
+
+        names.set(
+            id,
+            blockName
+        );
+
+
+        texts.set(
+
+            id,
+
+            (
+                blockName
+                +
+                " "
+                +
+                (
+                    entry?.meta?.rootName
+                    ||
+                    ""
+                )
+                +
+                " "
+                +
+                (
+                    entry?.displayName
+                    ||
+                    ""
+                )
+            )
+            .toLowerCase()
+        );
+    }
+}
+
+
+function blockText(
+    id
+) {
+
+    return (
+        texts.get(
+            Number(
+                id
+            )
+        )
+        ||
+        String(
+            names.get(
+                Number(
+                    id
+                )
+            )
+            ||
+            ""
+        )
+        .toLowerCase()
+    );
+}
+
+
+function blockName(
+    id
+) {
+
+    return (
+        names.get(
+            Number(
+                id
+            )
+        )
+        ||
+        "Block " +
+        id
+    );
+}
+
+
+function isAir(
+    id
+) {
+
+    return (
+        Number(
+            id
+        )
+        ===
+        0
+        ||
+        blockText(
+            id
+        )
+        .includes(
+            "air"
+        )
+    );
+}
+
+
+function isOre(
+    id
+) {
+
+    return (
+        Number(
+            id
+        )
+        ===
+        DIAMOND
+
+        ||
+
+        Number(
+            id
+        )
+        ===
+        MOONSTONE
+
+        ||
+
+        blockText(
+            id
+        )
+        .includes(
+            "ore"
+        )
+    );
+}
+
+
+function blockColour(
+    id
+) {
+
+    const text =
+        blockText(
+            id
+        );
+
+
+    if (
+        Number(
+            id
+        )
+        ===
+        DIAMOND
+
+        ||
+
+        text.includes(
+            "diamond"
+        )
+    ) {
+
+        return [
+            33,
+            140,
+            255
+        ];
+    }
+
+
+    if (
+        Number(
+            id
+        )
+        ===
+        MOONSTONE
+
+        ||
+
+        text.includes(
+            "moonstone"
+        )
+    ) {
+
+        return [
+            255,
+            51,
+            68
+        ];
+    }
+
+
+    if (
+        text.includes(
+            "gold"
+        )
+    ) {
+
+        return [
+            242,
+            194,
+            48
+        ];
+    }
+
+
+    if (
+        text.includes(
+            "iron"
+        )
+    ) {
+
+        return [
+            245,
+            245,
+            245
+        ];
+    }
+
+
+    if (
+        text.includes(
+            "coal"
+        )
+    ) {
+
+        return [
+            5,
+            6,
+            8
+        ];
+    }
+
+
+    if (
+        text.includes(
+            "lava"
+        )
+    ) {
+
+        return [
+            240,
+            91,
+            22
+        ];
+    }
+
+
+    if (
+        text.includes(
+            "water"
+        )
+    ) {
+
+        return [
+            22,
+            60,
+            136
+        ];
+    }
+
+
+    if (
+        text.includes(
+            "dirt"
+        )
+    ) {
+
+        return [
+            121,
+            80,
+            57
+        ];
+    }
+
+
+    if (
+        isAir(
+            id
+        )
+    ) {
+
+        return [
+            8,
+            14,
+            20
+        ];
+    }
+
+
+    return [
+        116,
+        123,
+        131
+    ];
+}
+
+
+// =====================================================
+// WORKER
+// =====================================================
+
+function createWorker() {
+
+    if (
+        worker
+    ) {
+
+        worker.terminate();
+    }
+
+
+    const blob =
+        new Blob(
+
+            [
+                "(" +
+                workerFn.toString() +
+                ")()"
+            ],
+
+            {
+                type:
+                    "application/javascript"
+            }
+        );
+
+
+    const url =
+        URL.createObjectURL(
+            blob
+        );
+
+
+    worker =
+        new Worker(
+            url
+        );
+
+
+    workerSeed =
+        null;
+
+
+    worker.postMessage({
+
+        type:
+            "workerInit",
+
+        chunkSize:
+            32,
+
+        itemMetadata:
+            imd,
+
+        blockMetadata:
+            bmd
+
+    });
+
+
+    worker.onmessage =
+        event => {
+
+            const result =
+                event.data;
+
+
+            if (
+                !result
+                ||
+                result.type
+                !==
+                "chunkResponse"
+            ) {
+
+                return;
+            }
+
+
+            for (
+                const [
+                    cacheKey,
+                    pendingRequest
+                ]
+                of
+                pending
+            ) {
+
+                if (
+                    pendingRequest.id
+                    !==
+                    result.id
+                ) {
+
+                    continue;
+                }
+
+
+                pending.delete(
+                    cacheKey
+                );
+
+
+                const raw =
+                    result.array?.data;
+
+
+                const data =
+                    raw
+                    instanceof
+                    Uint16Array
+
+                    ?
+
+                    raw
+
+                    :
+
+                    new Uint16Array(
+                        raw?.buffer
+                        ||
+                        raw
+                        ||
+                        []
+                    );
+
+
+                const chunk = {
+
+                    data,
+
+                    cx:
+                        pendingRequest.cx,
+
+                    cy:
+                        pendingRequest.cy,
+
+                    cz:
+                        pendingRequest.cz
+
+                };
+
+
+                chunks.set(
+                    cacheKey,
+                    chunk
+                );
+
+
+                scanOres(
+                    chunk
+                );
+
+
+                pendingRequest.resolve(
+                    chunk
+                );
+
+
+                break;
+            }
+        };
+}
+
+
+function ensureSeed() {
+
+    if (
+        String(
+            workerSeed
+        )
+        ===
+        String(
+            seed
+        )
+    ) {
+
+        return;
+    }
+
+
+    worker.postMessage({
+
+        type:
+            "createSeed",
+
+        seed,
+
+        dN:
+            1,
+
+        oN:
+            1
+
+    });
+
+
+    workerSeed =
+        seed;
+}
+
+
+function requestChunk(
+    cx,
+    cy,
+    cz
+) {
+
+    const cacheKey =
+        chunkKey(
+            cx,
+            cy,
+            cz
+        );
+
+
+    if (
+        chunks.has(
+            cacheKey
+        )
+    ) {
+
+        return Promise.resolve(
+            chunks.get(
+                cacheKey
+            )
+        );
+    }
+
+
+    if (
+        pending.has(
+            cacheKey
+        )
+    ) {
+
+        return pending
+            .get(
+                cacheKey
+            )
+            .promise;
+    }
+
+
+    ensureSeed();
+
+
+    const id =
+
+        (
+            cx *
+            32
+        )
+
+        +
+        "|"
+
+        +
+        (
+            cy *
+            32
+        )
+
+        +
+        "|"
+
+        +
+        (
+            cz *
+            32
+        )
+
+        +
+        "|"
+
+        +
+        seed;
+
+
+    let resolvePromise;
+
+
+    const promise =
+        new Promise(
+            resolve => {
+
+                resolvePromise =
+                    resolve;
+            }
+        );
+
+
+    pending.set(
+
+        cacheKey,
+
+        {
+
+            id,
+
+            cx,
+
+            cy,
+
+            cz,
+
+            resolve:
+                resolvePromise,
+
+            promise
+
+        }
+    );
+
+
+    worker.postMessage({
+
+        id,
+
+        type:
+            "chunk",
+
+        array: {
+
+            data:
+                new Uint16Array(
+                    32768
+                ),
+
+            shape: [
+                32,
+                32,
+                32
+            ],
+
+            stride: [
+                1024,
+                32,
+                1
+            ],
+
+            offset:
+                0
+
+        }
+
+    });
+
+
+    return promise;
+}
+
+
+// =====================================================
+// ALL-Y ORES
+// =====================================================
+
+function scanOres(
+    chunk
+) {
+
+    const points =
+        [];
+
+
+    for (
+        let index = 0;
+        index < chunk.data.length;
+        index++
+    ) {
+
+        const id =
+            chunk.data[
+                index
+            ];
+
+
+        if (
+            id !== DIAMOND
+            &&
+            id !== MOONSTONE
+        ) {
+
+            continue;
+        }
+
+
+        const localX =
+            Math.floor(
+                index /
+                1024
+            );
+
+
+        const remaining =
+            index
+            -
+            localX *
+            1024;
+
+
+        const localY =
+            Math.floor(
+                remaining /
+                32
+            );
+
+
+        const localZ =
+            remaining
+            -
+            localY *
+            32;
+
+
+        points.push({
+
+            id,
+
+            x:
+                chunk.cx *
+                32
+                +
+                localX,
+
+            y:
+                chunk.cy *
+                32
+                +
+                localY,
+
+            z:
+                chunk.cz *
+                32
+                +
+                localZ
+
+        });
+    }
+
+
+    oreCache.set(
+
+        chunkKey(
+            chunk.cx,
+            chunk.cy,
+            chunk.cz
+        ),
+
+        points
+    );
+}
+
+
+// =====================================================
+// BLOCK LOOKUP
+// =====================================================
+
+function getBlock(
+    x,
+    y,
+    z
+) {
+
+    const chunk =
+        chunks.get(
+
+            chunkKey(
+
+                floorDiv(
+                    x,
+                    32
+                ),
+
+                floorDiv(
+                    y,
+                    32
+                ),
+
+                floorDiv(
+                    z,
+                    32
+                )
+            )
+        );
+
+
+    if (
+        !chunk
+    ) {
+
+        return null;
+    }
+
+
+    const localX =
+        mod(
+            x,
+            32
+        );
+
+
+    const localY =
+        mod(
+            y,
+            32
+        );
+
+
+    const localZ =
+        mod(
+            z,
+            32
+        );
+
+
+    return chunk.data[
+
+        localX *
+        1024
+
+        +
+
+        localY *
+        32
+
+        +
+
+        localZ
+    ];
+}
+
+
+// =====================================================
+// FIXED MIRRORED MAP
+//
+//             +X
+//              ↑
+//
+//        +Z ←  ●  → -Z
+//
+//              ↓
+//             -X
+//
+// =====================================================
+
+function screenToWorld(
+    row,
+    column,
+    centerX,
+    centerZ
+) {
+
+    return {
+
+        x:
+            centerX
+            +
+            (
+                radius -
+                row
+            ),
+
+        z:
+            centerZ
+            -
+            (
+                column -
+                radius
+            )
+
+    };
+}
+
+
+function worldToScreen(
+    x,
+    z,
+    centerX,
+    centerZ
+) {
+
+    return {
+
+        row:
+            radius
+            -
+            (
+                x -
+                centerX
+            ),
+
+        col:
+            radius
+            -
+            (
+                z -
+                centerZ
+            )
+
+    };
+}
+
+
+// =====================================================
+// CHUNKS TO LOAD
+// =====================================================
+
+async function ensureNeededChunks() {
+
+    const centerX =
+        Math.floor(
+            pos[0]
+        );
+
+
+    const centerZ =
+        Math.floor(
+            pos[2]
+        );
+
+
+    const needed =
+        [];
+
+
+    const minChunkX =
+        floorDiv(
+            centerX -
+            radius -
+            2,
+            32
+        );
+
+
+    const maxChunkX =
+        floorDiv(
+            centerX +
+            radius +
+            2,
+            32
+        );
+
+
+    const minChunkZ =
+        floorDiv(
+            centerZ -
+            radius -
+            2,
+            32
+        );
+
+
+    const maxChunkZ =
+        floorDiv(
+            centerZ +
+            radius +
+            2,
+            32
+        );
+
+
+    const chunkYLevels =
+        new Set(
+
+            getLayers()
+            .map(
+                y =>
+                    floorDiv(
+                        y,
+                        32
+                    )
+            )
+        );
+
+
+    if (
+        showAllY
+    ) {
+
+        for (
+            const chunkY
+            of
+            ALL_Y_LEVELS
+        ) {
+
+            chunkYLevels.add(
+                chunkY
+            );
+        }
+    }
+
+
+    if (
+        getMode()
+        ===
+        "surface"
+    ) {
+
+        const baseChunkY =
+            floorDiv(
+                Math.floor(
+                    pos[1]
+                ),
+                32
+            );
+
+
+        chunkYLevels.add(
+            baseChunkY - 1
+        );
+
+        chunkYLevels.add(
+            baseChunkY
+        );
+
+        chunkYLevels.add(
+            baseChunkY + 1
+        );
+    }
+
+
+    for (
+        let cx = minChunkX;
+        cx <= maxChunkX;
+        cx++
+    ) {
+
+        for (
+            let cz = minChunkZ;
+            cz <= maxChunkZ;
+            cz++
+        ) {
+
+            for (
+                const cy
+                of
+                chunkYLevels
+            ) {
+
+                needed.push(
+
+                    requestChunk(
+                        cx,
+                        cy,
+                        cz
+                    )
+                );
+            }
+        }
+    }
+
+
+    await Promise.all(
+        needed
+    );
+}
+
+
+// =====================================================
+// MAP SAMPLE
+// =====================================================
+
+function sampleBlock(
+    x,
+    z
+) {
+
+    const y =
+        Math.floor(
+            pos[1]
+        );
+
+
+    if (
+        getMode()
+        ===
+        "surface"
+    ) {
+
+        for (
+            let testY = y + 48;
+            testY >= y - 48;
+            testY--
+        ) {
+
+            const id =
+                getBlock(
+                    x,
+                    testY,
+                    z
+                );
+
+
+            if (
+                id !== null
+                &&
+                !isAir(
+                    id
+                )
+            ) {
+
+                return {
+
+                    id,
+
+                    y:
+                        testY
+
+                };
+            }
+        }
+
+
+        return null;
+    }
+
+
+    const base =
+        getBlock(
+            x,
+            y,
+            z
+        );
+
+
+    if (
+        base !== null
+        &&
+        isOre(
+            base
+        )
+    ) {
+
+        return {
+
+            id:
+                base,
+
+            y
+
+        };
+    }
+
+
+    for (
+        const extraY
+        of
+        getLayers()
+    ) {
+
+        if (
+            extraY === y
+        ) {
+
+            continue;
+        }
+
+
+        const id =
+            getBlock(
+                x,
+                extraY,
+                z
+            );
+
+
+        if (
+            id !== null
+            &&
+            isOre(
+                id
+            )
+        ) {
+
+            return {
+
+                id,
+
+                y:
+                    extraY
+
+            };
+        }
+    }
+
+
+    if (
+        base === null
+    ) {
+
+        return null;
+    }
+
+
+    return {
+
+        id:
+            base,
+
+        y
+
+    };
+}
+
+
+// =====================================================
+// DRAW
+// =====================================================
+
+function drawText(
+    text
+) {
+
+    ctx.fillStyle =
+        "#071019";
+
+
+    ctx.fillRect(
+        0,
+        0,
+        MAP,
+        MAP
+    );
+
+
+    ctx.fillStyle =
+        "#ffffff";
+
+
+    ctx.font =
+        "18px Consolas";
+
+
+    ctx.textAlign =
+        "center";
+
+
+    ctx.fillText(
+        text,
+        MAP / 2,
+        MAP / 2
+    );
+}
+
+
+function drawMap() {
+
+    if (
+        !worker
+        ||
+        !bmd
+    ) {
+
+        return;
+    }
+
+
+    const centerX =
+        Math.floor(
+            pos[0]
+        );
+
+
+    const centerZ =
+        Math.floor(
+            pos[2]
+        );
+
+
+    const diameter =
+        radius *
+        2
+        +
+        1;
+
+
+    const image =
+        ctx.createImageData(
+            diameter,
+            diameter
+        );
+
+
+    const pixels =
+        image.data;
+
+
+    for (
+        let row = 0;
+        row < diameter;
+        row++
+    ) {
+
+        for (
+            let column = 0;
+            column < diameter;
+            column++
+        ) {
+
+            const world =
+                screenToWorld(
+                    row,
+                    column,
+                    centerX,
+                    centerZ
+                );
+
+
+            const sample =
+                sampleBlock(
+                    world.x,
+                    world.z
+                );
+
+
+            const colour =
+                sample
+                ?
+                blockColour(
+                    sample.id
+                )
+                :
+                [
+                    20,
+                    29,
+                    37
+                ];
+
+
+            const offset =
+                (
+                    row *
+                    diameter
+                    +
+                    column
+                )
+                *
+                4;
+
+
+            pixels[
+                offset
+            ] =
+                colour[0];
+
+
+            pixels[
+                offset + 1
+            ] =
+                colour[1];
+
+
+            pixels[
+                offset + 2
+            ] =
+                colour[2];
+
+
+            pixels[
+                offset + 3
+            ] =
+                255;
+        }
+    }
+
+
+    const temporary =
+        document.createElement(
+            "canvas"
+        );
+
+
+    temporary.width =
+        diameter;
+
+    temporary.height =
+        diameter;
+
+
+    temporary
+        .getContext(
+            "2d"
+        )
+        .putImageData(
+            image,
+            0,
+            0
+        );
+
+
+    ctx.imageSmoothingEnabled =
+        false;
+
+
+    ctx.drawImage(
+        temporary,
+        0,
+        0,
+        MAP,
+        MAP
+    );
+
+
+    drawGrid(
+        centerX,
+        centerZ,
+        diameter
+    );
+
+
+    drawAllYOres(
+        centerX,
+        centerZ,
+        diameter
+    );
+
+
+    // Player marker
+
+    ctx.fillStyle =
+        "#5ee4ff";
+
+
+    ctx.beginPath();
+
+
+    ctx.moveTo(
+        MAP / 2,
+        MAP / 2 - 12
+    );
+
+
+    ctx.lineTo(
+        MAP / 2 + 8,
+        MAP / 2 + 8
+    );
+
+
+    ctx.lineTo(
+        MAP / 2 - 8,
+        MAP / 2 + 8
+    );
+
+
+    ctx.closePath();
+
+    ctx.fill();
+
+
+    coords.textContent =
+
+        "X "
+        +
+        pos[0].toFixed(
+            2
+        )
+
+        +
+        " • Y "
+
+        +
+        pos[1].toFixed(
+            2
+        )
+
+        +
+        " • Z "
+
+        +
+        pos[2].toFixed(
+            2
+        );
+
+
+    modeEl.textContent =
+
+        (
+            getMode()
+            ===
+            "surface"
+
+            ?
+
+            "SURFACE"
+
+            :
+
+            "UNDERGROUND"
+        )
+
+        +
+        " • Y "
+
+        +
+        getLayers()
+            .join(
+                "/"
+            );
+}
+
+
+// =====================================================
+// GRID
+// =====================================================
+
+function drawGrid(
+    centerX,
+    centerZ,
+    diameter
+) {
+
+    if (
+        radius > 15
+    ) {
+
+        return;
+    }
+
+
+    const cellSize =
+        MAP /
+        diameter;
+
+
+    ctx.strokeStyle =
+        "rgba(255,255,255,.09)";
+
+
+    ctx.lineWidth =
+        1;
+
+
+    for (
+        let i = 0;
+        i <= diameter;
+        i++
+    ) {
+
+        const position =
+            i *
+            cellSize;
+
+
+        ctx.beginPath();
+
+        ctx.moveTo(
+            position,
+            0
+        );
+
+        ctx.lineTo(
+            position,
+            MAP
+        );
+
+        ctx.stroke();
+
+
+        ctx.beginPath();
+
+        ctx.moveTo(
+            0,
+            position
+        );
+
+        ctx.lineTo(
+            MAP,
+            position
+        );
+
+        ctx.stroke();
+    }
+
+
+    // Chunk lines
+
+    ctx.strokeStyle =
+        "rgba(94,228,255,.45)";
+
+
+    ctx.lineWidth =
+        1.5;
+
+
+    for (
+        let x =
+            floorDiv(
+                centerX -
+                radius,
+                32
+            )
+            *
+            32;
+
+        x <= centerX + radius;
+
+        x += 32
+    ) {
+
+        const screen =
+            worldToScreen(
+                x,
+                centerZ,
+                centerX,
+                centerZ
+            );
+
+
+        const y =
+            (
+                screen.row
+                +
+                0.5
+            )
+            *
+            cellSize;
+
+
+        ctx.beginPath();
+
+        ctx.moveTo(
+            0,
+            y
+        );
+
+        ctx.lineTo(
+            MAP,
+            y
+        );
+
+        ctx.stroke();
+    }
+
+
+    for (
+        let z =
+            floorDiv(
+                centerZ -
+                radius,
+                32
+            )
+            *
+            32;
+
+        z <= centerZ + radius;
+
+        z += 32
+    ) {
+
+        const screen =
+            worldToScreen(
+                centerX,
+                z,
+                centerX,
+                centerZ
+            );
+
+
+        const x =
+            (
+                screen.col
+                +
+                0.5
+            )
+            *
+            cellSize;
+
+
+        ctx.beginPath();
+
+        ctx.moveTo(
+            x,
+            0
+        );
+
+        ctx.lineTo(
+            x,
+            MAP
+        );
+
+        ctx.stroke();
+    }
+}
+
+
+// =====================================================
+// ALL Y DIAMOND / MOONSTONE
+// =====================================================
+
+function drawAllYOres(
+    centerX,
+    centerZ,
+    diameter
+) {
+
+    if (
+        !showAllY
+    ) {
+
+        return;
+    }
+
+
+    const cellSize =
+        MAP /
+        diameter;
+
+
+    for (
+        const [
+            cacheKey,
+            points
+        ]
+        of
+        oreCache
+    ) {
+
+        if (
+            !cacheKey.startsWith(
+                String(
+                    seed
+                )
+                +
+                "|"
+            )
+        ) {
+
+            continue;
+        }
+
+
+        for (
+            const point
+            of
+            points
+        ) {
+
+            if (
+                !ALL_Y_LEVELS.includes(
+
+                    floorDiv(
+                        point.y,
+                        32
+                    )
+                )
+            ) {
+
+                continue;
+            }
+
+
+            const screen =
+                worldToScreen(
+                    point.x,
+                    point.z,
+                    centerX,
+                    centerZ
+                );
+
+
+            if (
+                screen.row < 0
+                ||
+                screen.row >= diameter
+                ||
+                screen.col < 0
+                ||
+                screen.col >= diameter
+            ) {
+
+                continue;
+            }
+
+
+            ctx.fillStyle =
+
+                point.id
+                ===
+                DIAMOND
+
+                ?
+
+                "#218cff"
+
+                :
+
+                "#ff3344";
+
+
+            ctx.fillRect(
+
+                screen.col *
+                cellSize,
+
+                screen.row *
+                cellSize,
+
+                Math.max(
+                    2,
+                    cellSize
+                ),
+
+                Math.max(
+                    2,
+                    cellSize
+                )
+            );
+        }
+    }
+}
+
+
+// =====================================================
+// REFRESH
+// =====================================================
+
+async function refresh() {
+
+    seed =
+        normalSeed(
+            document
+            .getElementById(
+                "seed"
+            )
+            .value
+        );
+
+
+    pos = [
+
+        Number(
+            document
+            .getElementById(
+                "x"
+            )
+            .value
+        )
+        ||
+        0,
+
+        Number(
+            document
+            .getElementById(
+                "y"
+            )
+            .value
+        )
+        ||
+        0,
+
+        Number(
+            document
+            .getElementById(
+                "z"
+            )
+            .value
+        )
+        ||
+        0
+
+    ];
+
+
+    chunks.clear();
+
+    oreCache.clear();
+
+
+    createWorker();
+
+
+    status.textContent =
+        "LÄDT CHUNKS…";
+
+    status.className =
+        "warn";
+
+
+    drawText(
+        "LÄDT…"
+    );
+
+
+    try {
+
+        await ensureNeededChunks();
+
+
+        status.textContent =
+            "ENGINE ✓ • MAP READY";
+
+
+        status.className =
+            "ok";
+
+
+        drawMap();
+
+    }
+    catch (
+        error
+    ) {
+
+        console.error(
+            error
+        );
+
+
+        status.textContent =
+            "CHUNK ERROR";
+
+
+        status.className =
+            "bad";
+    }
+}
+
+
+// =====================================================
+// BUTTON STATE
+// =====================================================
+
+function updateButtons() {
+
+    document
+        .getElementById(
+            "y1"
+        )
+        .classList
+        .toggle(
+            "active",
+            showY1
+        );
+
+
+    document
+        .getElementById(
+            "y3"
+        )
+        .classList
+        .toggle(
+            "active",
+            showY3
+        );
+
+
+    document
+        .getElementById(
+            "allY"
+        )
+        .classList
+        .toggle(
+            "active",
+            showAllY
+        );
+
+
+    radiusEl.textContent =
+        "R" +
+        radius;
+}
+
+
+// =====================================================
+// EVENTS
+// =====================================================
+
+document
+    .getElementById(
+        "go"
+    )
+    .onclick =
+    refresh;
+
+
+for (
+    const id
+    of
+    [
+        "seed",
+        "x",
+        "y",
+        "z"
+    ]
+) {
+
+    document
+        .getElementById(
+            id
+        )
+        .addEventListener(
+
+            "keydown",
+
+            event => {
+
+                if (
+                    event.key
+                    ===
+                    "Enter"
+                ) {
+
+                    refresh();
+                }
+            }
+        );
+}
+
+
+document
+    .getElementById(
+        "y1"
+    )
+    .onclick =
+    async () => {
+
+        showY1 =
+            !showY1;
+
+
+        updateButtons();
+
+
+        await ensureNeededChunks();
+
+        drawMap();
+    };
+
+
+document
+    .getElementById(
+        "y3"
+    )
+    .onclick =
+    async () => {
+
+        showY3 =
+            !showY3;
+
+
+        updateButtons();
+
+
+        await ensureNeededChunks();
+
+        drawMap();
+    };
+
+
+document
+    .getElementById(
+        "allY"
+    )
+    .onclick =
+    async () => {
+
+        showAllY =
+            !showAllY;
+
+
+        updateButtons();
+
+
+        await ensureNeededChunks();
+
+        drawMap();
+    };
+
+
+document
+    .getElementById(
+        "minus"
+    )
+    .onclick =
+    async () => {
+
+        const index =
+            ZOOMS.indexOf(
+                radius
+            );
+
+
+        if (
+            index > 0
+        ) {
+
+            radius =
+                ZOOMS[
+                    index - 1
+                ];
+
+
+            updateButtons();
+
+
+            await ensureNeededChunks();
+
+            drawMap();
+        }
+    };
+
+
+document
+    .getElementById(
+        "plus"
+    )
+    .onclick =
+    async () => {
+
+        const index =
+            ZOOMS.indexOf(
+                radius
+            );
+
+
+        if (
+            index
+            <
+            ZOOMS.length - 1
+        ) {
+
+            radius =
+                ZOOMS[
+                    index + 1
+                ];
+
+
+            updateButtons();
+
+
+            await ensureNeededChunks();
+
+            drawMap();
+        }
+    };
+
+
+// =====================================================
+// HOVER
+// =====================================================
+
+canvas.addEventListener(
+
+    "mousemove",
+
+    event => {
+
+        const rect =
+            canvas
+            .getBoundingClientRect();
+
+
+        const diameter =
+            radius *
+            2
+            +
+            1;
+
+
+        const column =
+            Math.max(
+
+                0,
+
+                Math.min(
+
+                    diameter - 1,
+
+                    Math.floor(
+
+                        (
+                            event.clientX
+                            -
+                            rect.left
+                        )
+
+                        /
+                        rect.width
+
+                        *
+                        diameter
+                    )
+                )
+            );
+
+
+        const row =
+            Math.max(
+
+                0,
+
+                Math.min(
+
+                    diameter - 1,
+
+                    Math.floor(
+
+                        (
+                            event.clientY
+                            -
+                            rect.top
+                        )
+
+                        /
+                        rect.height
+
+                        *
+                        diameter
+                    )
+                )
+            );
+
+
+        const world =
+            screenToWorld(
+
+                row,
+
+                column,
+
+                Math.floor(
+                    pos[0]
+                ),
+
+                Math.floor(
+                    pos[2]
+                )
+            );
+
+
+        const sample =
+            sampleBlock(
+                world.x,
+                world.z
+            );
+
+
+        if (
+            sample
+        ) {
+
+            hover.textContent =
+
+                blockName(
+                    sample.id
+                )
+
+                +
+                " • X "
+
+                +
+                world.x
+
+                +
+                " Y "
+
+                +
+                sample.y
+
+                +
+                " Z "
+
+                +
+                world.z;
+
+        }
+        else {
+
+            hover.textContent =
+
+                "X "
+                +
+                world.x
+
+                +
+                " • Z "
+
+                +
+                world.z
+
+                +
+                " • loading/air";
+        }
+    }
+);
+
+
+canvas.addEventListener(
+
+    "mouseleave",
+
+    () => {
+
+        hover.textContent =
+            "Maus über Karte → Blockname";
+    }
+);
+
+
+// =====================================================
+// START
+// =====================================================
+
+updateButtons();
+
+drawText(
+    "ENGINE LÄDT…"
+);
+
+loadEngine();
+
+})();
 </script>
 
 </body>
