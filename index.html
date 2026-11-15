@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Bloxd Minimap</title>
+
+    <style>
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background: #070d14;
+            color: white;
+            font-family: Arial, sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .box {
+            width: 420px;
+            padding: 25px;
+            background: #0d1723;
+            border: 1px solid #26384b;
+            border-radius: 16px;
+        }
+
+        h1 {
+            margin-top: 0;
+        }
+
+        .status {
+            margin-top: 12px;
+            padding: 10px;
+            background: #071019;
+            border-radius: 8px;
+            font-family: monospace;
+        }
+
+        .ok {
+            color: #4cff91;
+        }
+
+        .error {
+            color: #ff5f68;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="box">
+    <h1>Bloxd Minimap</h1>
+
+    <p>GitHub-Version ohne localhost</p>
+
+    <div id="status" class="status">
+        Prüfe Dateien...
+    </div>
+</div>
+
+
+<script>
+async function testFiles() {
+
+    const files = [
+        "blockMetadata.js",
+        "itemMetadata.js",
+        "webWorkerBloxd.js"
+    ];
+
+    const status =
+        document.getElementById("status");
+
+    let output = "";
+
+    for (const file of files) {
+
+        try {
+
+            const response =
+                await fetch("./" + file);
+
+            if (!response.ok) {
+                throw new Error(
+                    "HTTP " + response.status
+                );
+            }
+
+            const text =
+                await response.text();
+
+            if (text.length < 100) {
+                throw new Error(
+                    "Datei ist zu klein"
+                );
+            }
+
+            output +=
+                `<div class="ok">✓ ${file}</div>`;
+
+        } catch (error) {
+
+            output +=
+                `<div class="error">✕ ${file}</div>`;
+        }
+    }
+
+    status.innerHTML = output;
+}
+
+testFiles();
+</script>
+
+</body>
+</html>
