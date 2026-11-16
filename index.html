@@ -2,289 +2,188 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 
-<title>Bloxd Minimap</title>
+<title>Bloxd World Map</title>
 
 <style>
-:root {
-    color-scheme: dark;
-
-    --bg: #070d14;
-    --panel: #0c1621;
-    --line: #26384b;
-    --text: #eef5ff;
-    --muted: #8ea1b5;
-    --accent: #5ee4ff;
-    --green: #4cff91;
-    --yellow: #ffd166;
-    --red: #ff5f68;
+:root{
+    color-scheme:dark;
+    --bg:#071019;
+    --panel:#0d1824;
+    --line:#26394d;
+    --text:#eef6ff;
+    --muted:#91a4b8;
+    --ok:#4cff91;
+    --warn:#ffd166;
+    --bad:#ff5f68;
 }
 
-* {
-    box-sizing: border-box;
+*{
+    box-sizing:border-box;
 }
 
-body {
-    margin: 0;
-    min-height: 100vh;
-    background: var(--bg);
-    color: var(--text);
-    font-family: Inter, Segoe UI, Arial, sans-serif;
+body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:Arial,sans-serif;
 }
 
-.wrap {
-    max-width: 980px;
-    margin: 0 auto;
-    padding: 24px;
+#top{
+    position:sticky;
+    top:0;
+    z-index:20;
+
+    display:flex;
+    align-items:center;
+    flex-wrap:wrap;
+    gap:8px;
+
+    padding:10px 12px;
+
+    background:rgba(13,24,36,.97);
+    border-bottom:1px solid var(--line);
+
+    backdrop-filter:blur(8px);
 }
 
-.panel {
-    background: linear-gradient(180deg, #0f1b28, #09121b);
-    border: 1px solid var(--line);
-    border-radius: 16px;
-    box-shadow: 0 20px 60px #0008;
-    overflow: hidden;
+#title{
+    font-weight:900;
+    margin-right:8px;
 }
 
-.top {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-
-    padding: 14px 16px;
-
-    border-bottom: 1px solid #ffffff12;
-
-    flex-wrap: wrap;
+label{
+    font-size:12px;
+    color:var(--muted);
 }
 
-.title {
-    font-weight: 900;
-    letter-spacing: .08em;
+input,
+button{
+    height:34px;
+
+    border:1px solid #2d4258;
+    border-radius:7px;
+
+    background:#08131e;
+    color:white;
+
+    padding:0 10px;
+
+    font:700 13px Arial,sans-serif;
 }
 
-.sub {
-    font-size: 12px;
-    color: var(--muted);
-    margin-top: 3px;
+input{
+    width:120px;
 }
 
-.controls {
-    display: flex;
-    gap: 6px;
-    align-items: center;
-    flex-wrap: wrap;
+#radius{
+    width:85px;
 }
 
-button,
-input {
-    font: inherit;
+button{
+    cursor:pointer;
 }
 
-button {
-    border: 1px solid #ffffff20;
-    background: #0c1723;
-    color: #eaf4ff;
-
-    border-radius: 8px;
-
-    padding: 8px 10px;
-
-    font-weight: 800;
-
-    cursor: pointer;
+button:hover{
+    background:#122337;
 }
 
-button:hover {
-    background: #132235;
+#status{
+    margin-left:auto;
+
+    font:700 12px Consolas,monospace;
+
+    color:var(--warn);
 }
 
-button.active {
-    outline: 2px solid #5ee4ff55;
-    border-color: #5ee4ff;
-    color: #7debff;
+#main{
+    padding:16px;
 }
 
-.radius {
-    font: 800 12px Consolas, monospace;
-    color: #b8c8d8;
+#mapWrap{
+    position:relative;
 
-    min-width: 38px;
+    width:min(950px,96vw);
 
-    text-align: center;
+    margin:auto;
 }
 
-.inputs {
-    display: grid;
+#map{
+    display:block;
 
-    grid-template-columns:
-        1.2fr
-        repeat(3, 1fr)
-        auto;
+    width:100%;
+    height:auto;
 
-    gap: 8px;
+    background:#101821;
 
-    padding: 12px 16px;
+    border:1px solid #263b50;
+    border-radius:10px;
 
-    border-bottom: 1px solid #ffffff0d;
+    image-rendering:pixelated;
+
+    box-shadow:
+        0 20px 60px
+        rgba(0,0,0,.4);
 }
 
-.field {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
+#compass{
+    position:absolute;
+
+    right:10px;
+    top:10px;
+
+    padding:6px 8px;
+
+    background:rgba(3,9,14,.72);
+
+    border:1px solid rgba(255,255,255,.16);
+    border-radius:6px;
+
+    font:700 11px Consolas,monospace;
+
+    pointer-events:none;
 }
 
-.field label {
-    font-size: 10px;
-    font-weight: 800;
-    color: #71839a;
+#hover{
+    width:min(950px,96vw);
+
+    margin:8px auto 0;
+
+    padding:8px 10px;
+
+    background:#08131e;
+
+    border:1px solid #24384c;
+    border-radius:7px;
+
+    color:#becddd;
+
+    font:700 12px Consolas,monospace;
 }
 
-.field input {
-    width: 100%;
+#info{
+    width:min(950px,96vw);
 
-    background: #071019;
+    margin:8px auto 0;
 
-    border: 1px solid #ffffff18;
+    display:flex;
+    justify-content:space-between;
+    gap:10px;
 
-    border-radius: 8px;
+    color:#7f94aa;
 
-    color: white;
-
-    padding: 9px;
+    font:700 11px Consolas,monospace;
 }
 
-.maprow {
-    display: grid;
-
-    grid-template-columns:
-        minmax(0, 1fr)
-        250px;
-
-    gap: 14px;
-
-    padding: 14px;
-}
-
-.canvasbox {
-    display: flex;
-
-    align-items: center;
-    justify-content: center;
-
-    min-width: 0;
-}
-
-canvas {
-    width: min(640px, 100%);
-    aspect-ratio: 1 / 1;
-
-    background: #071019;
-
-    border: 1px solid #ffffff18;
-
-    border-radius: 12px;
-
-    image-rendering: pixelated;
-}
-
-.side {
-    display: flex;
-    flex-direction: column;
-
-    gap: 10px;
-}
-
-.card {
-    background: #08111a;
-
-    border: 1px solid #ffffff12;
-
-    border-radius: 10px;
-
-    padding: 10px;
-
-    font-size: 12px;
-}
-
-.mono {
-    font-family: Consolas, monospace;
-}
-
-.ok {
-    color: var(--green);
-}
-
-.warn {
-    color: var(--yellow);
-}
-
-.bad {
-    color: var(--red);
-}
-
-.legend {
-    display: grid;
-
-    grid-template-columns:
-        1fr
-        1fr;
-
-    gap: 6px;
-
-    font-size: 11px;
-}
-
-.dot {
-    display: inline-block;
-
-    width: 9px;
-    height: 9px;
-
-    margin-right: 5px;
-
-    border-radius: 2px;
-
-    vertical-align: -1px;
-}
-
-.hint {
-    font-size: 11px;
-
-    color: var(--muted);
-
-    line-height: 1.45;
-}
-
-@media (max-width: 760px) {
-
-    .maprow {
-        grid-template-columns: 1fr;
+@media(max-width:700px){
+    #status{
+        width:100%;
+        margin-left:0;
     }
 
-    .inputs {
-        grid-template-columns:
-            1fr
-            1fr;
-    }
-
-    .inputs .seed {
-        grid-column: 1 / -1;
-    }
-
-    .inputs button {
-        grid-column: 1 / -1;
-    }
-
-    .side {
-        order: -1;
-    }
-
-    .wrap {
-        padding: 10px;
+    input{
+        width:90px;
     }
 }
 </style>
@@ -292,308 +191,92 @@ canvas {
 
 <body>
 
-<div class="wrap">
+<div id="top">
 
-<div class="panel">
-
-    <div class="top">
-
-        <div>
-
-            <div class="title">
-                BLOXD MINIMAP
-            </div>
-
-            <div class="sub">
-                GitHub-Version • ohne localhost
-            </div>
-
-        </div>
-
-
-        <div class="controls">
-
-            <button id="y1">
-                Y+1
-            </button>
-
-            <button id="y3">
-                +Y3
-            </button>
-
-            <button id="allY">
-                ◇ ALL Y
-            </button>
-
-            <button id="minus">
-                −
-            </button>
-
-            <div
-                id="radius"
-                class="radius"
-            >
-                R30
-            </div>
-
-            <button id="plus">
-                +
-            </button>
-
-        </div>
-
+    <div id="title">
+        BLOXD WORLD MAP
     </div>
 
-
-    <div class="inputs">
-
-        <div class="field seed">
-
-            <label>
-                SEED / LOBBY
-            </label>
-
-            <input
-                id="seed"
-                value="1234"
-            >
-
-        </div>
-
-
-        <div class="field">
-
-            <label>
-                X
-            </label>
-
-            <input
-                id="x"
-                type="number"
-                step="0.01"
-                value="0"
-            >
-
-        </div>
-
-
-        <div class="field">
-
-            <label>
-                Y
-            </label>
-
-            <input
-                id="y"
-                type="number"
-                step="0.01"
-                value="-85"
-            >
-
-        </div>
-
-
-        <div class="field">
-
-            <label>
-                Z
-            </label>
-
-            <input
-                id="z"
-                type="number"
-                step="0.01"
-                value="0"
-            >
-
-        </div>
-
-
-        <button id="go">
-            KARTE LADEN
-        </button>
-
-    </div>
-
-
-    <div class="maprow">
-
-        <div class="canvasbox">
-
-            <canvas
-                id="map"
-                width="640"
-                height="640"
-            ></canvas>
-
-        </div>
-
-
-        <div class="side">
-
-            <div class="card mono">
-
-                <div
-                    id="status"
-                    class="warn"
-                >
-                    ENGINE LÄDT…
-                </div>
-
-                <div
-                    id="coords"
-                    style="margin-top:7px"
-                >
-                    X 0.00 • Y -85.00 • Z 0.00
-                </div>
-
-                <div
-                    id="mode"
-                    style="
-                        margin-top:5px;
-                        color:#7debff
-                    "
-                >
-                    UNDERGROUND
-                </div>
-
-            </div>
-
-
-            <div class="card mono">
-
-                <b>
-                    ORIENTIERUNG
-                </b>
-
-                <br><br>
-
-                <div style="text-align:center">
-                    +X ↑
-                </div>
-
-                <div
-                    style="
-                        display:flex;
-                        justify-content:space-between
-                    "
-                >
-
-                    <span>
-                        +Z ←
-                    </span>
-
-                    <span>
-                        → -Z
-                    </span>
-
-                </div>
-
-                <div style="text-align:center">
-                    ↓ -X
-                </div>
-
-            </div>
-
-
-            <div
-                class="card mono"
-                id="hover"
-            >
-                Maus über Karte → Blockname
-            </div>
-
-
-            <div class="card">
-
-                <div class="legend">
-
-                    <div>
-                        <span
-                            class="dot"
-                            style="background:#747b83"
-                        ></span>
-                        Stone
-                    </div>
-
-                    <div>
-                        <span
-                            class="dot"
-                            style="background:#218cff"
-                        ></span>
-                        Diamond
-                    </div>
-
-                    <div>
-                        <span
-                            class="dot"
-                            style="background:#ff3344"
-                        ></span>
-                        Moonstone
-                    </div>
-
-                    <div>
-                        <span
-                            class="dot"
-                            style="background:#f5f5f5"
-                        ></span>
-                        Iron
-                    </div>
-
-                    <div>
-                        <span
-                            class="dot"
-                            style="background:#050608"
-                        ></span>
-                        Coal
-                    </div>
-
-                    <div>
-                        <span
-                            class="dot"
-                            style="background:#f2c230"
-                        ></span>
-                        Gold
-                    </div>
-
-                    <div>
-                        <span
-                            class="dot"
-                            style="background:#f05b16"
-                        ></span>
-                        Lava
-                    </div>
-
-                    <div>
-                        <span
-                            class="dot"
-                            style="background:#163c88"
-                        ></span>
-                        Water
-                    </div>
-
-                </div>
-
-            </div>
-
-
-            <div class="card hint">
-
-                Trage oben deine sichtbaren
-                X/Y/Z-Koordinaten aus Bloxd ein
-                und drücke
-
-                <b>
-                    Karte laden
-                </b>.
-
-            </div>
-
-        </div>
-
-    </div>
+    <label>
+        SEED
+    </label>
+
+    <input
+        id="seed"
+        value="1234"
+    >
+
+    <label>
+        X
+    </label>
+
+    <input
+        id="x"
+        value="0"
+    >
+
+    <label>
+        Z
+    </label>
+
+    <input
+        id="z"
+        value="0"
+    >
+
+    <label>
+        RADIUS
+    </label>
+
+    <input
+        id="radius"
+        value="64"
+    >
+
+    <button id="load">
+        WELT LADEN
+    </button>
+
+    <span id="status">
+        ENGINE LÄDT…
+    </span>
 
 </div>
+
+
+<div id="main">
+
+    <div id="mapWrap">
+
+        <canvas
+            id="map"
+            width="950"
+            height="950"
+        ></canvas>
+
+        <div id="compass">
+            ↑ -Z<br>
+            -X ← &nbsp; → +X<br>
+            ↓ +Z
+        </div>
+
+    </div>
+
+    <div id="hover">
+        Maus über Karte → Block • Höhe • Koordinaten • Chunk
+    </div>
+
+    <div id="info">
+
+        <span>
+            feines Raster = 1 Block
+        </span>
+
+        <span>
+            cyan = Chunkgrenze 32×32
+        </span>
+
+    </div>
 
 </div>
 
@@ -604,83 +287,65 @@ canvas {
 "use strict";
 
 
-const CHUNK =
-    32;
+// =====================================================
+// CONFIG
+// =====================================================
 
-const MAP =
-    640;
+const CHUNK_SIZE = 32;
 
-const DIAMOND =
-    45;
+/*
+    Welt wird für die Oberflächen-Suche
+    von Y -96 bis Y +127 geladen.
+*/
 
-const MOONSTONE =
-    465;
-
-
-const ZOOMS = [
-    3,
-    5,
-    10,
-    15,
-    20,
-    25,
-    30,
-    35,
-    40,
-    45,
-    50
-];
+const MIN_CHUNK_Y = -3;
+const MAX_CHUNK_Y = 3;
 
 
-const ALL_Y_LEVELS = [
-    -4,
-    -3,
-    -2
-];
+// =====================================================
+// UI
+// =====================================================
+
+const canvas =
+    document.getElementById("map");
+
+const ctx =
+    canvas.getContext(
+        "2d",
+        {
+            alpha:false
+        }
+    );
+
+const statusEl =
+    document.getElementById("status");
+
+const hoverEl =
+    document.getElementById("hover");
+
+const seedEl =
+    document.getElementById("seed");
+
+const xEl =
+    document.getElementById("x");
+
+const zEl =
+    document.getElementById("z");
+
+const radiusEl =
+    document.getElementById("radius");
 
 
-const SURFACE_MIN_Y =
-    -16;
+// =====================================================
+// GENERATOR
+// =====================================================
 
+let bmd = null;
+let imd = null;
+let workerFunction = null;
 
-let radius =
-    30;
-
-let showY1 =
-    false;
-
-let showY3 =
-    false;
-
-let showAllY =
-    false;
-
-
-let seed =
-    1234;
-
-let pos = [
-    0,
-    -85,
-    0
-];
-
-
-let bmd =
-    null;
-
-let imd =
-    null;
-
-let workerFn =
-    null;
-
-let worker =
-    null;
-
-let workerSeed =
-    null;
-
+let worker = null;
+let workerSeed = null;
 
 const chunks =
     new Map();
@@ -688,227 +353,143 @@ const chunks =
 const pending =
     new Map();
 
-const names =
+const blockNames =
     new Map();
 
-const texts =
+const blockTexts =
     new Map();
 
-const oreCache =
-    new Map();
+let currentSurface = null;
 
-
-const canvas =
-    document.getElementById(
-        "map"
-    );
-
-
-const ctx =
-    canvas.getContext(
-        "2d",
-        {
-            alpha:
-                false
-        }
-    );
-
-
-const status =
-    document.getElementById(
-        "status"
-    );
-
-
-const coords =
-    document.getElementById(
-        "coords"
-    );
-
-
-const modeEl =
-    document.getElementById(
-        "mode"
-    );
-
-
-const hover =
-    document.getElementById(
-        "hover"
-    );
-
-
-const radiusEl =
-    document.getElementById(
-        "radius"
-    );
+let currentView = null;
 
 
 // =====================================================
 // BASIC HELPERS
 // =====================================================
 
-function floorDiv(
-    value,
-    divisor
-) {
+function floorDiv(v,d){
 
     return Math.floor(
-        value /
-        divisor
+        v / d
     );
 }
 
 
-function mod(
-    value,
-    divisor
-) {
+function mod(v,d){
 
     return (
         (
-            value %
-            divisor
+            v % d
         )
         +
-        divisor
+        d
     )
     %
-    divisor;
+    d;
 }
 
 
-function chunkKey(
-    cx,
-    cy,
-    cz
-) {
+function clamp(v,min,max){
 
-    return (
-        seed +
-        "|" +
-        cx +
-        "|" +
-        cy +
-        "|" +
-        cz
+    return Math.max(
+        min,
+        Math.min(
+            max,
+            v
+        )
     );
 }
 
 
-function normalSeed(value) {
+function normalSeed(value){
 
-    const string =
-        String(
-            value
-        )
+    const text =
+        String(value)
         .trim();
 
 
-    if (
-        /^-?\d+$/.test(
-            string
-        )
-    ) {
+    if(
+        /^-?\d+$/.test(text)
+    ){
 
         const number =
-            Number(
-                string
-            );
+            Number(text);
 
 
-        if (
-            Number.isSafeInteger(
-                number
-            )
-        ) {
+        if(
+            Number.isSafeInteger(number)
+        ){
 
             return number;
         }
     }
 
 
-    return string;
+    return text;
 }
 
 
-function getMode() {
+function chunkKey(
+    seed,
+    cx,
+    cy,
+    cz
+){
 
     return (
-        Math.floor(
-            pos[1]
-        )
-        >=
-        SURFACE_MIN_Y
-    )
-        ?
-        "surface"
-        :
-        "underground";
+        seed
+        +
+        "|"
+        +
+        cx
+        +
+        "|"
+        +
+        cy
+        +
+        "|"
+        +
+        cz
+    );
 }
 
 
 // =====================================================
-// Y MODES
+// LOAD GENERATOR FILES
 // =====================================================
 
-function getLayers() {
+async function loadText(file){
 
-    const y =
-        Math.floor(
-            pos[1]
+    const response =
+        await fetch(
+            "./" + file,
+            {
+                cache:"no-store"
+            }
         );
 
 
-    const output = [
-        y
-    ];
+    if(
+        !response.ok
+    ){
 
-
-    if (
-        getMode() ===
-        "underground"
-    ) {
-
-        if (
-            showY1
-        ) {
-
-            output.push(
-                y + 1
-            );
-        }
-
-
-        if (
-            showY3
-        ) {
-
-            output.push(
-                y + 1,
-                y + 2,
-                y - 1
-            );
-        }
+        throw new Error(
+            file +
+            " HTTP " +
+            response.status
+        );
     }
 
 
-    return [
-        ...new Set(
-            output
-        )
-    ];
+    return await response.text();
 }
 
 
-// =====================================================
-// LOAD GENERATOR
-// =====================================================
-
 function extractVariable(
     source,
-    variableName
-) {
+    variable
+){
 
     return new Function(
 
@@ -916,132 +497,12 @@ function extractVariable(
 
         `
 
-        return (
-            typeof ${variableName}
-            !==
-            "undefined"
-        )
-            ?
-            ${variableName}
-            :
-            window[
-                ${JSON.stringify(variableName)}
-            ];
+        return typeof ${variable} !== "undefined"
+            ? ${variable}
+            : window[${JSON.stringify(variable)}];
 
         `
     )();
-}
-
-
-async function loadEngine() {
-
-    try {
-
-        status.textContent =
-            "ENGINE LÄDT…";
-
-        status.className =
-            "warn";
-
-
-        const [
-            workerSource,
-            blockSource,
-            itemSource
-        ] =
-        await Promise.all(
-
-            [
-                "webWorkerBloxd.js",
-                "blockMetadata.js",
-                "itemMetadata.js"
-            ]
-
-            .map(
-                async file => {
-
-                    const response =
-                        await fetch(
-                            "./" +
-                            file
-                        );
-
-
-                    if (
-                        !response.ok
-                    ) {
-
-                        throw new Error(
-                            file +
-                            ": HTTP " +
-                            response.status
-                        );
-                    }
-
-
-                    return await response.text();
-                }
-            )
-        );
-
-
-        workerFn =
-            extractVariable(
-                workerSource,
-                "webWorkerCodeFunction"
-            );
-
-
-        bmd =
-            extractVariable(
-                blockSource,
-                "bmd"
-            );
-
-
-        imd =
-            extractVariable(
-                itemSource,
-                "imd"
-            );
-
-
-        buildBlockIndex();
-
-        createWorker();
-
-
-        status.textContent =
-            "ENGINE ✓";
-
-        status.className =
-            "ok";
-
-
-        await refresh();
-
-    }
-    catch (
-        error
-    ) {
-
-        console.error(
-            error
-        );
-
-
-        status.textContent =
-            "ENGINE ✕ " +
-            error.message;
-
-        status.className =
-            "bad";
-
-
-        drawText(
-            "ENGINE ERROR"
-        );
-    }
 }
 
 
@@ -1049,24 +510,22 @@ async function loadEngine() {
 // BLOCK METADATA
 // =====================================================
 
-function buildBlockIndex() {
+function buildBlockIndex(){
 
-    names.clear();
+    blockNames.clear();
+    blockTexts.clear();
 
-    texts.clear();
 
-
-    for (
+    for(
         const [
-            blockName,
+            name,
             entry
         ]
         of
         Object.entries(
-            bmd ||
-            {}
+            bmd || {}
         )
-    ) {
+    ){
 
         const id =
             Number(
@@ -1074,33 +533,31 @@ function buildBlockIndex() {
             );
 
 
-        if (
-            !Number.isFinite(
-                id
-            )
-        ) {
+        if(
+            !Number.isFinite(id)
+        ){
 
             continue;
         }
 
 
-        names.set(
+        blockNames.set(
             id,
-            blockName
+            name
         );
 
 
-        texts.set(
+        blockTexts.set(
 
             id,
 
             (
-                blockName
+                name
                 +
                 " "
                 +
                 (
-                    entry?.meta?.rootName
+                    entry?.displayName
                     ||
                     ""
                 )
@@ -1108,7 +565,7 @@ function buildBlockIndex() {
                 " "
                 +
                 (
-                    entry?.displayName
+                    entry?.meta?.rootName
                     ||
                     ""
                 )
@@ -1119,40 +576,11 @@ function buildBlockIndex() {
 }
 
 
-function blockText(
-    id
-) {
+function blockName(id){
 
     return (
-        texts.get(
-            Number(
-                id
-            )
-        )
-        ||
-        String(
-            names.get(
-                Number(
-                    id
-                )
-            )
-            ||
-            ""
-        )
-        .toLowerCase()
-    );
-}
-
-
-function blockName(
-    id
-) {
-
-    return (
-        names.get(
-            Number(
-                id
-            )
+        blockNames.get(
+            Number(id)
         )
         ||
         "Block " +
@@ -1161,215 +589,441 @@ function blockName(
 }
 
 
-function isAir(
-    id
-) {
+function blockText(id){
 
     return (
-        Number(
-            id
+        blockTexts.get(
+            Number(id)
         )
-        ===
-        0
         ||
-        blockText(
-            id
-        )
-        .includes(
-            "air"
-        )
+        ""
     );
 }
 
 
-function isOre(
-    id
-) {
+function isAir(id){
 
     return (
-        Number(
-            id
-        )
-        ===
-        DIAMOND
+        Number(id) === 0
 
         ||
 
-        Number(
-            id
-        )
-        ===
-        MOONSTONE
-
-        ||
-
-        blockText(
-            id
-        )
-        .includes(
-            "ore"
-        )
+        blockText(id)
+        .includes("air")
     );
 }
 
 
-function blockColour(
-    id
-) {
+/*
+    Kleine Pflanzen usw. überspringen wir
+    bei der Top-Down-Karte.
 
-    const text =
-        blockText(
-            id
-        );
+    Dadurch sieht man wirklich den Boden
+    statt tausender Blumen/Grashalme.
+*/
+
+function ignoreForSurface(id){
+
+    const t =
+        blockText(id);
 
 
-    if (
-        Number(
-            id
-        )
-        ===
-        DIAMOND
+    if(
+        isAir(id)
+    ){
 
+        return true;
+    }
+
+
+    return (
+        t.includes("flower")
         ||
+        t.includes("poppy")
+        ||
+        t.includes("tulip")
+        ||
+        t.includes("dandelion")
+        ||
+        t.includes("mushroom")
+        ||
+        t.includes("tall grass")
+        ||
+        t.includes("short grass")
+        ||
+        t.includes("grass plant")
+        ||
+        t.includes("fern")
+        ||
+        t.includes("torch")
+    );
+}
 
-        text.includes(
-            "diamond"
-        )
-    ) {
+
+// =====================================================
+// BLOCK COLORS
+// =====================================================
+
+function baseColor(id){
+
+    const t =
+        blockText(id);
+
+
+    if(t.includes("water")){
 
         return [
-            33,
-            140,
-            255
+            44,
+            111,
+            192
         ];
     }
 
 
-    if (
-        Number(
-            id
-        )
-        ===
-        MOONSTONE
-
-        ||
-
-        text.includes(
-            "moonstone"
-        )
-    ) {
+    if(t.includes("lava")){
 
         return [
-            255,
-            51,
-            68
+            238,
+            80,
+            18
         ];
     }
 
 
-    if (
-        text.includes(
-            "gold"
-        )
-    ) {
+    if(t.includes("snow")){
 
         return [
-            242,
-            194,
+            236,
+            241,
+            244
+        ];
+    }
+
+
+    if(t.includes("ice")){
+
+        return [
+            170,
+            220,
+            237
+        ];
+    }
+
+
+    if(t.includes("sand")){
+
+        return [
+            219,
+            199,
+            126
+        ];
+    }
+
+
+    if(t.includes("gravel")){
+
+        return [
+            121,
+            119,
+            117
+        ];
+    }
+
+
+    if(t.includes("clay")){
+
+        return [
+            161,
+            117,
+            101
+        ];
+    }
+
+
+    if(t.includes("cactus")){
+
+        return [
+            48,
+            118,
+            49
+        ];
+    }
+
+
+    if(
+        t.includes("leaf")
+        ||
+        t.includes("leaves")
+    ){
+
+        return [
+            62,
+            125,
+            45
+        ];
+    }
+
+
+    if(
+        t.includes("wood")
+        ||
+        t.includes("log")
+    ){
+
+        return [
+            128,
+            89,
+            55
+        ];
+    }
+
+
+    if(
+        t.includes("plank")
+    ){
+
+        return [
+            151,
+            112,
+            70
+        ];
+    }
+
+
+    if(
+        t.includes("grass")
+    ){
+
+        return [
+            80,
+            153,
             48
         ];
     }
 
 
-    if (
-        text.includes(
-            "iron"
-        )
-    ) {
+    if(
+        t.includes("dirt")
+        ||
+        t.includes("mud")
+    ){
 
         return [
-            245,
-            245,
-            245
+            130,
+            92,
+            59
         ];
     }
 
 
-    if (
-        text.includes(
-            "coal"
-        )
-    ) {
+    if(
+        t.includes("stone")
+        ||
+        t.includes("rock")
+    ){
 
         return [
-            5,
-            6,
-            8
-        ];
-    }
-
-
-    if (
-        text.includes(
-            "lava"
-        )
-    ) {
-
-        return [
-            240,
-            91,
-            22
-        ];
-    }
-
-
-    if (
-        text.includes(
-            "water"
-        )
-    ) {
-
-        return [
-            22,
-            60,
+            125,
+            130,
             136
         ];
     }
 
 
-    if (
-        text.includes(
-            "dirt"
-        )
-    ) {
+    if(t.includes("coal")){
 
         return [
-            121,
-            80,
-            57
+            43,
+            45,
+            48
         ];
     }
 
 
-    if (
-        isAir(
-            id
-        )
-    ) {
+    if(t.includes("iron")){
 
         return [
-            8,
-            14,
-            20
+            203,
+            194,
+            179
         ];
     }
+
+
+    if(t.includes("gold")){
+
+        return [
+            224,
+            183,
+            46
+        ];
+    }
+
+
+    if(t.includes("diamond")){
+
+        return [
+            45,
+            157,
+            218
+        ];
+    }
+
+
+    if(t.includes("moonstone")){
+
+        return [
+            201,
+            61,
+            110
+        ];
+    }
+
+
+    /*
+        Unbekannte Blöcke bekommen
+        stabile Farbe anhand ihrer ID.
+    */
+
+    let h =
+        Number(id) >>> 0;
+
+
+    h =
+        Math.imul(
+            h ^
+            (
+                h >>> 16
+            ),
+            2246822507
+        );
+
+
+    h =
+        Math.imul(
+            h ^
+            (
+                h >>> 13
+            ),
+            3266489909
+        );
 
 
     return [
-        116,
-        123,
-        131
+
+        80 +
+        (
+            h &
+            45
+        ),
+
+        80 +
+        (
+            (
+                h >> 6
+            )
+            &
+            45
+        ),
+
+        80 +
+        (
+            (
+                h >> 12
+            )
+            &
+            45
+        )
+
     ];
+}
+
+
+function adjustColor(
+    color,
+    amount
+){
+
+    return [
+
+        clamp(
+            Math.round(
+                color[0] +
+                amount
+            ),
+            0,
+            255
+        ),
+
+        clamp(
+            Math.round(
+                color[1] +
+                amount
+            ),
+            0,
+            255
+        ),
+
+        clamp(
+            Math.round(
+                color[2] +
+                amount
+            ),
+            0,
+            255
+        )
+
+    ];
+}
+
+
+// =====================================================
+// DETERMINISTIC TEXTURE NOISE
+// =====================================================
+
+function noise(
+    x,
+    z,
+    id,
+    salt = 0
+){
+
+    let n =
+        Math.imul(
+            x + salt,
+            374761393
+        );
+
+    n ^=
+        Math.imul(
+            z - salt,
+            668265263
+        );
+
+    n ^=
+        Math.imul(
+            Number(id) + 1,
+            1442695041
+        );
+
+    n =
+        Math.imul(
+            n ^
+            (
+                n >>> 13
+            ),
+            1274126177
+        );
+
+    n ^=
+        n >>> 16;
+
+
+    return (
+        n >>> 0
+    )
+    /
+    4294967295;
 }
 
 
@@ -1377,11 +1031,9 @@ function blockColour(
 // WORKER
 // =====================================================
 
-function createWorker() {
+function createWorker(){
 
-    if (
-        worker
-    ) {
+    if(worker){
 
         worker.terminate();
     }
@@ -1392,7 +1044,7 @@ function createWorker() {
 
             [
                 "(" +
-                workerFn.toString() +
+                workerFunction.toString() +
                 ")()"
             ],
 
@@ -1443,39 +1095,37 @@ function createWorker() {
                 event.data;
 
 
-            if (
+            if(
                 !result
                 ||
-                result.type
-                !==
+                result.type !==
                 "chunkResponse"
-            ) {
+            ){
 
                 return;
             }
 
 
-            for (
+            for(
                 const [
-                    cacheKey,
-                    pendingRequest
+                    key,
+                    request
                 ]
                 of
                 pending
-            ) {
+            ){
 
-                if (
-                    pendingRequest.id
-                    !==
+                if(
+                    request.id !==
                     result.id
-                ) {
+                ){
 
                     continue;
                 }
 
 
                 pending.delete(
-                    cacheKey
+                    key
                 );
 
 
@@ -1505,32 +1155,27 @@ function createWorker() {
 
                 const chunk = {
 
-                    data,
-
                     cx:
-                        pendingRequest.cx,
+                        request.cx,
 
                     cy:
-                        pendingRequest.cy,
+                        request.cy,
 
                     cz:
-                        pendingRequest.cz
+                        request.cz,
+
+                    data
 
                 };
 
 
                 chunks.set(
-                    cacheKey,
+                    key,
                     chunk
                 );
 
 
-                scanOres(
-                    chunk
-                );
-
-
-                pendingRequest.resolve(
+                request.resolve(
                     chunk
                 );
 
@@ -1541,17 +1186,13 @@ function createWorker() {
 }
 
 
-function ensureSeed() {
+function setWorkerSeed(seed){
 
-    if (
-        String(
-            workerSeed
-        )
+    if(
+        String(workerSeed)
         ===
-        String(
-            seed
-        )
-    ) {
+        String(seed)
+    ){
 
         return;
     }
@@ -1578,81 +1219,51 @@ function ensureSeed() {
 }
 
 
+// =====================================================
+// REQUEST CHUNK
+// =====================================================
+
 function requestChunk(
+    seed,
     cx,
     cy,
     cz
-) {
+){
 
-    const cacheKey =
+    const key =
         chunkKey(
+            seed,
             cx,
             cy,
             cz
         );
 
 
-    if (
-        chunks.has(
-            cacheKey
-        )
-    ) {
+    if(
+        chunks.has(key)
+    ){
 
         return Promise.resolve(
-            chunks.get(
-                cacheKey
-            )
+            chunks.get(key)
         );
     }
 
 
-    if (
-        pending.has(
-            cacheKey
-        )
-    ) {
+    if(
+        pending.has(key)
+    ){
 
         return pending
-            .get(
-                cacheKey
-            )
+            .get(key)
             .promise;
     }
 
 
-    ensureSeed();
+    setWorkerSeed(seed);
 
 
     const id =
-
-        (
-            cx *
-            32
-        )
-
-        +
-        "|"
-
-        +
-        (
-            cy *
-            32
-        )
-
-        +
-        "|"
-
-        +
-        (
-            cz *
-            32
-        )
-
-        +
-        "|"
-
-        +
-        seed;
+        `${cx * 32}|${cy * 32}|${cz * 32}|${seed}`;
 
 
     let resolvePromise;
@@ -1670,23 +1281,18 @@ function requestChunk(
 
     pending.set(
 
-        cacheKey,
+        key,
 
         {
-
             id,
-
             cx,
-
             cy,
-
             cz,
 
             resolve:
                 resolvePromise,
 
             promise
-
         }
     );
 
@@ -1719,9 +1325,7 @@ function requestChunk(
 
             offset:
                 0
-
         }
-
     });
 
 
@@ -1730,395 +1334,1344 @@ function requestChunk(
 
 
 // =====================================================
-// ALL-Y ORES
-// =====================================================
-
-function scanOres(
-    chunk
-) {
-
-    const points =
-        [];
-
-
-    for (
-        let index = 0;
-        index < chunk.data.length;
-        index++
-    ) {
-
-        const id =
-            chunk.data[
-                index
-            ];
-
-
-        if (
-            id !== DIAMOND
-            &&
-            id !== MOONSTONE
-        ) {
-
-            continue;
-        }
-
-
-        const localX =
-            Math.floor(
-                index /
-                1024
-            );
-
-
-        const remaining =
-            index
-            -
-            localX *
-            1024;
-
-
-        const localY =
-            Math.floor(
-                remaining /
-                32
-            );
-
-
-        const localZ =
-            remaining
-            -
-            localY *
-            32;
-
-
-        points.push({
-
-            id,
-
-            x:
-                chunk.cx *
-                32
-                +
-                localX,
-
-            y:
-                chunk.cy *
-                32
-                +
-                localY,
-
-            z:
-                chunk.cz *
-                32
-                +
-                localZ
-
-        });
-    }
-
-
-    oreCache.set(
-
-        chunkKey(
-            chunk.cx,
-            chunk.cy,
-            chunk.cz
-        ),
-
-        points
-    );
-}
-
-
-// =====================================================
 // BLOCK LOOKUP
 // =====================================================
 
 function getBlock(
+    seed,
     x,
     y,
     z
-) {
+){
+
+    const cx =
+        floorDiv(
+            x,
+            32
+        );
+
+
+    const cy =
+        floorDiv(
+            y,
+            32
+        );
+
+
+    const cz =
+        floorDiv(
+            z,
+            32
+        );
+
 
     const chunk =
         chunks.get(
 
             chunkKey(
-
-                floorDiv(
-                    x,
-                    32
-                ),
-
-                floorDiv(
-                    y,
-                    32
-                ),
-
-                floorDiv(
-                    z,
-                    32
-                )
+                seed,
+                cx,
+                cy,
+                cz
             )
         );
 
 
-    if (
-        !chunk
-    ) {
+    if(!chunk){
 
         return null;
     }
 
 
-    const localX =
+    const lx =
         mod(
             x,
             32
         );
 
 
-    const localY =
+    const ly =
         mod(
             y,
             32
         );
 
 
-    const localZ =
+    const lz =
         mod(
             z,
             32
         );
 
 
+    const index =
+        lx * 1024
+        +
+        ly * 32
+        +
+        lz;
+
+
     return chunk.data[
-
-        localX *
-        1024
-
-        +
-
-        localY *
-        32
-
-        +
-
-        localZ
+        index
     ];
 }
 
 
 // =====================================================
-// FIXED MIRRORED MAP
-//
-//             +X
-//              ↑
-//
-//        +Z ←  ●  → -Z
-//
-//              ↓
-//             -X
-//
+// TRUE TOP-DOWN SURFACE
 // =====================================================
 
-function screenToWorld(
-    row,
-    column,
+function findTopBlock(
+    seed,
+    x,
+    z
+){
+
+    const maxY =
+        MAX_CHUNK_Y * 32 + 31;
+
+
+    const minY =
+        MIN_CHUNK_Y * 32;
+
+
+    for(
+        let y = maxY;
+        y >= minY;
+        y--
+    ){
+
+        const id =
+            getBlock(
+                seed,
+                x,
+                y,
+                z
+            );
+
+
+        if(
+            id === null
+        ){
+
+            continue;
+        }
+
+
+        if(
+            ignoreForSurface(id)
+        ){
+
+            continue;
+        }
+
+
+        return {
+            id,
+            y
+        };
+    }
+
+
+    return null;
+}
+
+
+function buildSurface(
+    seed,
     centerX,
-    centerZ
-) {
+    centerZ,
+    radius
+){
 
-    return {
+    const size =
+        radius * 2 + 1;
 
-        x:
-            centerX
-            +
-            (
-                radius -
-                row
-            ),
 
-        z:
+    const surface =
+        Array.from(
+            {
+                length:size
+            },
+            () =>
+                new Array(size)
+        );
+
+
+    for(
+        let row = 0;
+        row < size;
+        row++
+    ){
+
+        const worldZ =
             centerZ
             -
-            (
-                column -
-                radius
-            )
+            radius
+            +
+            row;
 
-    };
+
+        for(
+            let col = 0;
+            col < size;
+            col++
+        ){
+
+            const worldX =
+                centerX
+                -
+                radius
+                +
+                col;
+
+
+            const top =
+                findTopBlock(
+                    seed,
+                    worldX,
+                    worldZ
+                );
+
+
+            surface[row][col] =
+                top
+
+                ?
+
+                {
+                    id:
+                        top.id,
+
+                    y:
+                        top.y,
+
+                    x:
+                        worldX,
+
+                    z:
+                        worldZ
+                }
+
+                :
+
+                {
+                    id:0,
+
+                    y:
+                        MIN_CHUNK_Y * 32,
+
+                    x:
+                        worldX,
+
+                    z:
+                        worldZ
+                };
+        }
+    }
+
+
+    return surface;
 }
 
 
-function worldToScreen(
+// =====================================================
+// HEIGHT HELPERS
+// =====================================================
+
+function getHeight(
+    surface,
+    row,
+    col
+){
+
+    const rr =
+        clamp(
+            row,
+            0,
+            surface.length - 1
+        );
+
+
+    const cc =
+        clamp(
+            col,
+            0,
+            surface.length - 1
+        );
+
+
+    return surface[rr][cc].y;
+}
+
+
+// =====================================================
+// TEXTURED BLOCK
+// =====================================================
+
+function drawBlockTexture(
+    cell,
+    px,
+    py,
+    size,
+    base,
+    shade
+){
+
+    const t =
+        blockText(
+            cell.id
+        );
+
+
+    const main =
+        adjustColor(
+            base,
+            shade
+        );
+
+
+    ctx.fillStyle =
+        `rgb(${main[0]},${main[1]},${main[2]})`;
+
+
+    ctx.fillRect(
+        px,
+        py,
+        size + .5,
+        size + .5
+    );
+
+
+    /*
+        Texturen erst anzeigen,
+        wenn die Blöcke groß genug sind.
+    */
+
+    if(
+        size < 4
+    ){
+
+        return;
+    }
+
+
+    const n1 =
+        noise(
+            cell.x,
+            cell.z,
+            cell.id,
+            17
+        );
+
+
+    const n2 =
+        noise(
+            cell.x,
+            cell.z,
+            cell.id,
+            53
+        );
+
+
+    // ----------------------------
+    // Grass
+    // ----------------------------
+
+    if(
+        t.includes("grass")
+    ){
+
+        ctx.fillStyle =
+            "rgba(210,255,175,.12)";
+
+
+        ctx.fillRect(
+            px + size * n1 * .65,
+            py + size * n2 * .65,
+            Math.max(1,size * .12),
+            Math.max(1,size * .12)
+        );
+
+
+        ctx.fillStyle =
+            "rgba(0,60,0,.12)";
+
+
+        ctx.fillRect(
+            px + size * n2 * .75,
+            py + size * n1 * .75,
+            Math.max(1,size * .11),
+            Math.max(1,size * .11)
+        );
+    }
+
+
+    // ----------------------------
+    // Leaves
+    // ----------------------------
+
+    else if(
+        t.includes("leaf")
+        ||
+        t.includes("leaves")
+    ){
+
+        ctx.fillStyle =
+            "rgba(0,45,0,.18)";
+
+
+        ctx.fillRect(
+            px + size * .15,
+            py + size * .15,
+            Math.max(1,size * .2),
+            Math.max(1,size * .2)
+        );
+
+
+        ctx.fillRect(
+            px + size * .62,
+            py + size * .57,
+            Math.max(1,size * .16),
+            Math.max(1,size * .16)
+        );
+    }
+
+
+    // ----------------------------
+    // Water
+    // ----------------------------
+
+    else if(
+        t.includes("water")
+    ){
+
+        ctx.fillStyle =
+            "rgba(180,225,255,.20)";
+
+
+        ctx.fillRect(
+            px,
+            py + size * .25,
+            size,
+            Math.max(1,size * .08)
+        );
+
+
+        ctx.fillRect(
+            px + size * .18,
+            py + size * .67,
+            size * .55,
+            Math.max(1,size * .07)
+        );
+    }
+
+
+    // ----------------------------
+    // Sand
+    // ----------------------------
+
+    else if(
+        t.includes("sand")
+    ){
+
+        ctx.fillStyle =
+            "rgba(100,80,40,.15)";
+
+
+        ctx.fillRect(
+            px + size * n1 * .8,
+            py + size * n2 * .8,
+            Math.max(1,size * .1),
+            Math.max(1,size * .1)
+        );
+    }
+
+
+    // ----------------------------
+    // Dirt
+    // ----------------------------
+
+    else if(
+        t.includes("dirt")
+        ||
+        t.includes("mud")
+    ){
+
+        ctx.fillStyle =
+            "rgba(50,25,10,.16)";
+
+
+        ctx.fillRect(
+            px + size * n1 * .75,
+            py + size * n2 * .75,
+            Math.max(1,size * .14),
+            Math.max(1,size * .14)
+        );
+    }
+
+
+    // ----------------------------
+    // Stone
+    // ----------------------------
+
+    else if(
+        t.includes("stone")
+        ||
+        t.includes("rock")
+    ){
+
+        ctx.fillStyle =
+            "rgba(35,40,45,.15)";
+
+
+        ctx.fillRect(
+            px + size * n1 * .7,
+            py + size * n2 * .7,
+            Math.max(1,size * .16),
+            Math.max(1,size * .12)
+        );
+    }
+
+
+    // ----------------------------
+    // Wood
+    // ----------------------------
+
+    else if(
+        t.includes("wood")
+        ||
+        t.includes("log")
+    ){
+
+        ctx.strokeStyle =
+            "rgba(65,35,15,.25)";
+
+
+        ctx.lineWidth =
+            Math.max(
+                1,
+                size * .08
+            );
+
+
+        ctx.strokeRect(
+            px + size * .18,
+            py + size * .18,
+            size * .64,
+            size * .64
+        );
+    }
+}
+
+
+// =====================================================
+// RENDER TOP DOWN
+// =====================================================
+
+function renderSurface(
+    surface,
+    centerX,
+    centerZ,
+    radius
+){
+
+    const size =
+        surface.length;
+
+
+    const blockSize =
+        canvas.width /
+        size;
+
+
+    ctx.fillStyle =
+        "#101820";
+
+
+    ctx.fillRect(
+        0,
+        0,
+        canvas.width,
+        canvas.height
+    );
+
+
+    /*
+        Block für Block zeichnen.
+        Dadurch können wir echte kleine
+        Texturen + Relief verwenden.
+    */
+
+    for(
+        let row = 0;
+        row < size;
+        row++
+    ){
+
+        for(
+            let col = 0;
+            col < size;
+            col++
+        ){
+
+            const cell =
+                surface[row][col];
+
+
+            const hLeft =
+                getHeight(
+                    surface,
+                    row,
+                    col - 1
+                );
+
+
+            const hRight =
+                getHeight(
+                    surface,
+                    row,
+                    col + 1
+                );
+
+
+            const hUp =
+                getHeight(
+                    surface,
+                    row - 1,
+                    col
+                );
+
+
+            const hDown =
+                getHeight(
+                    surface,
+                    row + 1,
+                    col
+                );
+
+
+            /*
+                Licht von links oben.
+
+                Dadurch erkennt man Hügel,
+                Abhänge und Täler.
+            */
+
+            const slope =
+                (
+                    hLeft
+                    -
+                    hRight
+                )
+                *
+                3.4
+
+                +
+
+                (
+                    hUp
+                    -
+                    hDown
+                )
+                *
+                3.4;
+
+
+            const localTexture =
+                (
+                    noise(
+                        cell.x,
+                        cell.z,
+                        cell.id,
+                        91
+                    )
+                    -
+                    .5
+                )
+                *
+                5;
+
+
+            const shade =
+                clamp(
+                    slope
+                    +
+                    localTexture,
+                    -26,
+                    26
+                );
+
+
+            const px =
+                col *
+                blockSize;
+
+
+            const py =
+                row *
+                blockSize;
+
+
+            drawBlockTexture(
+
+                cell,
+
+                px,
+
+                py,
+
+                blockSize,
+
+                baseColor(
+                    cell.id
+                ),
+
+                shade
+            );
+        }
+    }
+
+
+    drawGrid(
+        centerX,
+        centerZ,
+        radius,
+        size,
+        blockSize
+    );
+
+
+    drawCenter();
+}
+
+
+// =====================================================
+// BLOCK GRID + CHUNK LINES
+// =====================================================
+
+function drawGrid(
+    centerX,
+    centerZ,
+    radius,
+    size,
+    blockSize
+){
+
+    ctx.save();
+
+
+    // -----------------------------
+    // BLOCK GRID
+    // -----------------------------
+
+    if(
+        blockSize >= 3
+    ){
+
+        ctx.strokeStyle =
+            blockSize >= 6
+
+            ?
+
+            "rgba(255,255,255,.065)"
+
+            :
+
+            "rgba(255,255,255,.035)";
+
+
+        ctx.lineWidth =
+            1;
+
+
+        for(
+            let i = 0;
+            i <= size;
+            i++
+        ){
+
+            const p =
+                Math.round(
+                    i *
+                    blockSize
+                )
+                +
+                .5;
+
+
+            ctx.beginPath();
+
+            ctx.moveTo(
+                p,
+                0
+            );
+
+            ctx.lineTo(
+                p,
+                canvas.height
+            );
+
+            ctx.stroke();
+
+
+            ctx.beginPath();
+
+            ctx.moveTo(
+                0,
+                p
+            );
+
+            ctx.lineTo(
+                canvas.width,
+                p
+            );
+
+            ctx.stroke();
+        }
+    }
+
+
+    // -----------------------------
+    // CHUNK LINES
+    // -----------------------------
+
+    const startX =
+        centerX -
+        radius;
+
+
+    const startZ =
+        centerZ -
+        radius;
+
+
+    ctx.strokeStyle =
+        "rgba(70,205,255,.58)";
+
+
+    ctx.lineWidth =
+        1.5;
+
+
+    for(
+        let col = 0;
+        col <= size;
+        col++
+    ){
+
+        const worldX =
+            startX +
+            col;
+
+
+        if(
+            mod(
+                worldX,
+                32
+            )
+            !==
+            0
+        ){
+
+            continue;
+        }
+
+
+        const px =
+            Math.round(
+                col *
+                blockSize
+            )
+            +
+            .5;
+
+
+        ctx.beginPath();
+
+        ctx.moveTo(
+            px,
+            0
+        );
+
+        ctx.lineTo(
+            px,
+            canvas.height
+        );
+
+        ctx.stroke();
+    }
+
+
+    for(
+        let row = 0;
+        row <= size;
+        row++
+    ){
+
+        const worldZ =
+            startZ +
+            row;
+
+
+        if(
+            mod(
+                worldZ,
+                32
+            )
+            !==
+            0
+        ){
+
+            continue;
+        }
+
+
+        const py =
+            Math.round(
+                row *
+                blockSize
+            )
+            +
+            .5;
+
+
+        ctx.beginPath();
+
+        ctx.moveTo(
+            0,
+            py
+        );
+
+        ctx.lineTo(
+            canvas.width,
+            py
+        );
+
+        ctx.stroke();
+    }
+
+
+    // -----------------------------
+    // CHUNK COORDINATES
+    // -----------------------------
+
+    ctx.font =
+        "10px Consolas";
+
+
+    ctx.textBaseline =
+        "top";
+
+
+    for(
+        let row = 0;
+        row < size;
+        row++
+    ){
+
+        const wz =
+            startZ +
+            row;
+
+
+        if(
+            mod(
+                wz,
+                32
+            )
+            !==
+            0
+        ){
+
+            continue;
+        }
+
+
+        for(
+            let col = 0;
+            col < size;
+            col++
+        ){
+
+            const wx =
+                startX +
+                col;
+
+
+            if(
+                mod(
+                    wx,
+                    32
+                )
+                !==
+                0
+            ){
+
+                continue;
+            }
+
+
+            const cx =
+                floorDiv(
+                    wx,
+                    32
+                );
+
+
+            const cz =
+                floorDiv(
+                    wz,
+                    32
+                );
+
+
+            const text =
+                `${cx},${cz}`;
+
+
+            const px =
+                col *
+                blockSize
+                +
+                3;
+
+
+            const py =
+                row *
+                blockSize
+                +
+                3;
+
+
+            ctx.fillStyle =
+                "rgba(0,0,0,.55)";
+
+
+            ctx.fillRect(
+
+                px - 2,
+
+                py - 1,
+
+                ctx.measureText(
+                    text
+                ).width
+                +
+                5,
+
+                13
+            );
+
+
+            ctx.fillStyle =
+                "rgba(220,245,255,.88)";
+
+
+            ctx.fillText(
+                text,
+                px,
+                py
+            );
+        }
+    }
+
+
+    ctx.restore();
+}
+
+
+// =====================================================
+// CENTER
+// =====================================================
+
+function drawCenter(){
+
+    const x =
+        canvas.width /
+        2;
+
+
+    const y =
+        canvas.height /
+        2;
+
+
+    ctx.save();
+
+
+    ctx.fillStyle =
+        "#ff3344";
+
+
+    ctx.strokeStyle =
+        "white";
+
+
+    ctx.lineWidth =
+        1.5;
+
+
+    ctx.beginPath();
+
+
+    ctx.arc(
+        x,
+        y,
+        4.5,
+        0,
+        Math.PI *
+        2
+    );
+
+
+    ctx.fill();
+
+    ctx.stroke();
+
+
+    ctx.restore();
+}
+
+
+// =====================================================
+// URL
+// =====================================================
+
+function readURL(){
+
+    const p =
+        new URLSearchParams(
+            location.search
+        );
+
+
+    if(p.has("seed")){
+
+        seedEl.value =
+            p.get("seed");
+    }
+
+
+    if(p.has("x")){
+
+        xEl.value =
+            p.get("x");
+    }
+
+
+    if(p.has("z")){
+
+        zEl.value =
+            p.get("z");
+    }
+
+
+    if(p.has("radius")){
+
+        radiusEl.value =
+            p.get("radius");
+    }
+}
+
+
+function updateURL(
+    seed,
     x,
     z,
-    centerX,
-    centerZ
-) {
+    radius
+){
 
-    return {
+    const p =
+        new URLSearchParams();
 
-        row:
-            radius
-            -
-            (
-                x -
-                centerX
-            ),
 
-        col:
-            radius
-            -
-            (
-                z -
-                centerZ
-            )
+    p.set(
+        "seed",
+        seed
+    );
 
-    };
+
+    p.set(
+        "x",
+        x
+    );
+
+
+    p.set(
+        "z",
+        z
+    );
+
+
+    p.set(
+        "radius",
+        radius
+    );
+
+
+    history.replaceState(
+        null,
+        "",
+        "?"
+        +
+        p.toString()
+    );
 }
 
 
 // =====================================================
-// CHUNKS TO LOAD
+// GENERATE
 // =====================================================
 
-async function ensureNeededChunks() {
+async function generate(){
+
+    const seed =
+        normalSeed(
+            seedEl.value
+        );
+
 
     const centerX =
         Math.floor(
-            pos[0]
+            Number(
+                xEl.value
+            )
+            ||
+            0
         );
 
 
     const centerZ =
         Math.floor(
-            pos[2]
+            Number(
+                zEl.value
+            )
+            ||
+            0
         );
 
 
-    const needed =
-        [];
+    const radius =
+        clamp(
+
+            Math.floor(
+                Number(
+                    radiusEl.value
+                )
+                ||
+                64
+            ),
+
+            8,
+
+            128
+        );
+
+
+    radiusEl.value =
+        radius;
+
+
+    updateURL(
+        seed,
+        centerX,
+        centerZ,
+        radius
+    );
+
+
+    statusEl.textContent =
+        "CHUNKS LADEN…";
+
+
+    statusEl.style.color =
+        "#ffd166";
+
+
+    chunks.clear();
+
+    pending.clear();
+
+
+    createWorker();
+
+
+    const minX =
+        centerX -
+        radius;
+
+
+    const maxX =
+        centerX +
+        radius;
+
+
+    const minZ =
+        centerZ -
+        radius;
+
+
+    const maxZ =
+        centerZ +
+        radius;
 
 
     const minChunkX =
         floorDiv(
-            centerX -
-            radius -
-            2,
+            minX,
             32
         );
 
 
     const maxChunkX =
         floorDiv(
-            centerX +
-            radius +
-            2,
+            maxX,
             32
         );
 
 
     const minChunkZ =
         floorDiv(
-            centerZ -
-            radius -
-            2,
+            minZ,
             32
         );
 
 
     const maxChunkZ =
         floorDiv(
-            centerZ +
-            radius +
-            2,
+            maxZ,
             32
         );
 
 
-    const chunkYLevels =
-        new Set(
-
-            getLayers()
-            .map(
-                y =>
-                    floorDiv(
-                        y,
-                        32
-                    )
-            )
-        );
+    const jobs =
+        [];
 
 
-    if (
-        showAllY
-    ) {
-
-        for (
-            const chunkY
-            of
-            ALL_Y_LEVELS
-        ) {
-
-            chunkYLevels.add(
-                chunkY
-            );
-        }
-    }
-
-
-    if (
-        getMode()
-        ===
-        "surface"
-    ) {
-
-        const baseChunkY =
-            floorDiv(
-                Math.floor(
-                    pos[1]
-                ),
-                32
-            );
-
-
-        chunkYLevels.add(
-            baseChunkY - 1
-        );
-
-        chunkYLevels.add(
-            baseChunkY
-        );
-
-        chunkYLevels.add(
-            baseChunkY + 1
-        );
-    }
-
-
-    for (
+    for(
         let cx = minChunkX;
         cx <= maxChunkX;
         cx++
-    ) {
+    ){
 
-        for (
+        for(
             let cz = minChunkZ;
             cz <= maxChunkZ;
             cz++
-        ) {
+        ){
 
-            for (
-                const cy
-                of
-                chunkYLevels
-            ) {
+            for(
+                let cy = MIN_CHUNK_Y;
+                cy <= MAX_CHUNK_Y;
+                cy++
+            ){
 
-                needed.push(
+                jobs.push(
 
                     requestChunk(
+                        seed,
                         cx,
                         cy,
                         cz
@@ -2130,1088 +2683,52 @@ async function ensureNeededChunks() {
 
 
     await Promise.all(
-        needed
-    );
-}
-
-
-// =====================================================
-// MAP SAMPLE
-// =====================================================
-
-function sampleBlock(
-    x,
-    z
-) {
-
-    const y =
-        Math.floor(
-            pos[1]
-        );
-
-
-    if (
-        getMode()
-        ===
-        "surface"
-    ) {
-
-        for (
-            let testY = y + 48;
-            testY >= y - 48;
-            testY--
-        ) {
-
-            const id =
-                getBlock(
-                    x,
-                    testY,
-                    z
-                );
-
-
-            if (
-                id !== null
-                &&
-                !isAir(
-                    id
-                )
-            ) {
-
-                return {
-
-                    id,
-
-                    y:
-                        testY
-
-                };
-            }
-        }
-
-
-        return null;
-    }
-
-
-    const base =
-        getBlock(
-            x,
-            y,
-            z
-        );
-
-
-    if (
-        base !== null
-        &&
-        isOre(
-            base
-        )
-    ) {
-
-        return {
-
-            id:
-                base,
-
-            y
-
-        };
-    }
-
-
-    for (
-        const extraY
-        of
-        getLayers()
-    ) {
-
-        if (
-            extraY === y
-        ) {
-
-            continue;
-        }
-
-
-        const id =
-            getBlock(
-                x,
-                extraY,
-                z
-            );
-
-
-        if (
-            id !== null
-            &&
-            isOre(
-                id
-            )
-        ) {
-
-            return {
-
-                id,
-
-                y:
-                    extraY
-
-            };
-        }
-    }
-
-
-    if (
-        base === null
-    ) {
-
-        return null;
-    }
-
-
-    return {
-
-        id:
-            base,
-
-        y
-
-    };
-}
-
-
-// =====================================================
-// DRAW
-// =====================================================
-
-function drawText(
-    text
-) {
-
-    ctx.fillStyle =
-        "#071019";
-
-
-    ctx.fillRect(
-        0,
-        0,
-        MAP,
-        MAP
+        jobs
     );
 
 
-    ctx.fillStyle =
-        "#ffffff";
+    statusEl.textContent =
+        "OBERFLÄCHE…";
 
 
-    ctx.font =
-        "18px Consolas";
-
-
-    ctx.textAlign =
-        "center";
-
-
-    ctx.fillText(
-        text,
-        MAP / 2,
-        MAP / 2
-    );
-}
-
-
-function drawMap() {
-
-    if (
-        !worker
-        ||
-        !bmd
-    ) {
-
-        return;
-    }
-
-
-    const centerX =
-        Math.floor(
-            pos[0]
+    const surface =
+        buildSurface(
+            seed,
+            centerX,
+            centerZ,
+            radius
         );
 
 
-    const centerZ =
-        Math.floor(
-            pos[2]
-        );
+    currentSurface =
+        surface;
 
 
-    const diameter =
-        radius *
-        2
-        +
-        1;
-
-
-    const image =
-        ctx.createImageData(
-            diameter,
-            diameter
-        );
-
-
-    const pixels =
-        image.data;
-
-
-    for (
-        let row = 0;
-        row < diameter;
-        row++
-    ) {
-
-        for (
-            let column = 0;
-            column < diameter;
-            column++
-        ) {
-
-            const world =
-                screenToWorld(
-                    row,
-                    column,
-                    centerX,
-                    centerZ
-                );
-
-
-            const sample =
-                sampleBlock(
-                    world.x,
-                    world.z
-                );
-
-
-            const colour =
-                sample
-                ?
-                blockColour(
-                    sample.id
-                )
-                :
-                [
-                    20,
-                    29,
-                    37
-                ];
-
-
-            const offset =
-                (
-                    row *
-                    diameter
-                    +
-                    column
-                )
-                *
-                4;
-
-
-            pixels[
-                offset
-            ] =
-                colour[0];
-
-
-            pixels[
-                offset + 1
-            ] =
-                colour[1];
-
-
-            pixels[
-                offset + 2
-            ] =
-                colour[2];
-
-
-            pixels[
-                offset + 3
-            ] =
-                255;
-        }
-    }
-
-
-    const temporary =
-        document.createElement(
-            "canvas"
-        );
-
-
-    temporary.width =
-        diameter;
-
-    temporary.height =
-        diameter;
-
-
-    temporary
-        .getContext(
-            "2d"
-        )
-        .putImageData(
-            image,
-            0,
-            0
-        );
-
-
-    ctx.imageSmoothingEnabled =
-        false;
-
-
-    ctx.drawImage(
-        temporary,
-        0,
-        0,
-        MAP,
-        MAP
-    );
-
-
-    drawGrid(
+    currentView = {
+        seed,
         centerX,
         centerZ,
-        diameter
-    );
+        radius
+    };
 
 
-    drawAllYOres(
+    renderSurface(
+        surface,
         centerX,
         centerZ,
-        diameter
+        radius
     );
 
 
-    // Player marker
-
-    ctx.fillStyle =
-        "#5ee4ff";
-
-
-    ctx.beginPath();
-
-
-    ctx.moveTo(
-        MAP / 2,
-        MAP / 2 - 12
-    );
-
-
-    ctx.lineTo(
-        MAP / 2 + 8,
-        MAP / 2 + 8
-    );
-
-
-    ctx.lineTo(
-        MAP / 2 - 8,
-        MAP / 2 + 8
-    );
-
-
-    ctx.closePath();
-
-    ctx.fill();
-
-
-    coords.textContent =
-
-        "X "
+    statusEl.textContent =
+        "READY ✓ SEED "
         +
-        pos[0].toFixed(
-            2
-        )
-
-        +
-        " • Y "
-
-        +
-        pos[1].toFixed(
-            2
-        )
-
-        +
-        " • Z "
-
-        +
-        pos[2].toFixed(
-            2
-        );
+        seed;
 
 
-    modeEl.textContent =
-
-        (
-            getMode()
-            ===
-            "surface"
-
-            ?
-
-            "SURFACE"
-
-            :
-
-            "UNDERGROUND"
-        )
-
-        +
-        " • Y "
-
-        +
-        getLayers()
-            .join(
-                "/"
-            );
+    statusEl.style.color =
+        "#4cff91";
 }
-
-
-// =====================================================
-// GRID
-// =====================================================
-
-function drawGrid(
-    centerX,
-    centerZ,
-    diameter
-) {
-
-    if (
-        radius > 15
-    ) {
-
-        return;
-    }
-
-
-    const cellSize =
-        MAP /
-        diameter;
-
-
-    ctx.strokeStyle =
-        "rgba(255,255,255,.09)";
-
-
-    ctx.lineWidth =
-        1;
-
-
-    for (
-        let i = 0;
-        i <= diameter;
-        i++
-    ) {
-
-        const position =
-            i *
-            cellSize;
-
-
-        ctx.beginPath();
-
-        ctx.moveTo(
-            position,
-            0
-        );
-
-        ctx.lineTo(
-            position,
-            MAP
-        );
-
-        ctx.stroke();
-
-
-        ctx.beginPath();
-
-        ctx.moveTo(
-            0,
-            position
-        );
-
-        ctx.lineTo(
-            MAP,
-            position
-        );
-
-        ctx.stroke();
-    }
-
-
-    // Chunk lines
-
-    ctx.strokeStyle =
-        "rgba(94,228,255,.45)";
-
-
-    ctx.lineWidth =
-        1.5;
-
-
-    for (
-        let x =
-            floorDiv(
-                centerX -
-                radius,
-                32
-            )
-            *
-            32;
-
-        x <= centerX + radius;
-
-        x += 32
-    ) {
-
-        const screen =
-            worldToScreen(
-                x,
-                centerZ,
-                centerX,
-                centerZ
-            );
-
-
-        const y =
-            (
-                screen.row
-                +
-                0.5
-            )
-            *
-            cellSize;
-
-
-        ctx.beginPath();
-
-        ctx.moveTo(
-            0,
-            y
-        );
-
-        ctx.lineTo(
-            MAP,
-            y
-        );
-
-        ctx.stroke();
-    }
-
-
-    for (
-        let z =
-            floorDiv(
-                centerZ -
-                radius,
-                32
-            )
-            *
-            32;
-
-        z <= centerZ + radius;
-
-        z += 32
-    ) {
-
-        const screen =
-            worldToScreen(
-                centerX,
-                z,
-                centerX,
-                centerZ
-            );
-
-
-        const x =
-            (
-                screen.col
-                +
-                0.5
-            )
-            *
-            cellSize;
-
-
-        ctx.beginPath();
-
-        ctx.moveTo(
-            x,
-            0
-        );
-
-        ctx.lineTo(
-            x,
-            MAP
-        );
-
-        ctx.stroke();
-    }
-}
-
-
-// =====================================================
-// ALL Y DIAMOND / MOONSTONE
-// =====================================================
-
-function drawAllYOres(
-    centerX,
-    centerZ,
-    diameter
-) {
-
-    if (
-        !showAllY
-    ) {
-
-        return;
-    }
-
-
-    const cellSize =
-        MAP /
-        diameter;
-
-
-    for (
-        const [
-            cacheKey,
-            points
-        ]
-        of
-        oreCache
-    ) {
-
-        if (
-            !cacheKey.startsWith(
-                String(
-                    seed
-                )
-                +
-                "|"
-            )
-        ) {
-
-            continue;
-        }
-
-
-        for (
-            const point
-            of
-            points
-        ) {
-
-            if (
-                !ALL_Y_LEVELS.includes(
-
-                    floorDiv(
-                        point.y,
-                        32
-                    )
-                )
-            ) {
-
-                continue;
-            }
-
-
-            const screen =
-                worldToScreen(
-                    point.x,
-                    point.z,
-                    centerX,
-                    centerZ
-                );
-
-
-            if (
-                screen.row < 0
-                ||
-                screen.row >= diameter
-                ||
-                screen.col < 0
-                ||
-                screen.col >= diameter
-            ) {
-
-                continue;
-            }
-
-
-            ctx.fillStyle =
-
-                point.id
-                ===
-                DIAMOND
-
-                ?
-
-                "#218cff"
-
-                :
-
-                "#ff3344";
-
-
-            ctx.fillRect(
-
-                screen.col *
-                cellSize,
-
-                screen.row *
-                cellSize,
-
-                Math.max(
-                    2,
-                    cellSize
-                ),
-
-                Math.max(
-                    2,
-                    cellSize
-                )
-            );
-        }
-    }
-}
-
-
-// =====================================================
-// REFRESH
-// =====================================================
-
-async function refresh() {
-
-    seed =
-        normalSeed(
-            document
-            .getElementById(
-                "seed"
-            )
-            .value
-        );
-
-
-    pos = [
-
-        Number(
-            document
-            .getElementById(
-                "x"
-            )
-            .value
-        )
-        ||
-        0,
-
-        Number(
-            document
-            .getElementById(
-                "y"
-            )
-            .value
-        )
-        ||
-        0,
-
-        Number(
-            document
-            .getElementById(
-                "z"
-            )
-            .value
-        )
-        ||
-        0
-
-    ];
-
-
-    chunks.clear();
-
-    oreCache.clear();
-
-
-    createWorker();
-
-
-    status.textContent =
-        "LÄDT CHUNKS…";
-
-    status.className =
-        "warn";
-
-
-    drawText(
-        "LÄDT…"
-    );
-
-
-    try {
-
-        await ensureNeededChunks();
-
-
-        status.textContent =
-            "ENGINE ✓ • MAP READY";
-
-
-        status.className =
-            "ok";
-
-
-        drawMap();
-
-    }
-    catch (
-        error
-    ) {
-
-        console.error(
-            error
-        );
-
-
-        status.textContent =
-            "CHUNK ERROR";
-
-
-        status.className =
-            "bad";
-    }
-}
-
-
-// =====================================================
-// BUTTON STATE
-// =====================================================
-
-function updateButtons() {
-
-    document
-        .getElementById(
-            "y1"
-        )
-        .classList
-        .toggle(
-            "active",
-            showY1
-        );
-
-
-    document
-        .getElementById(
-            "y3"
-        )
-        .classList
-        .toggle(
-            "active",
-            showY3
-        );
-
-
-    document
-        .getElementById(
-            "allY"
-        )
-        .classList
-        .toggle(
-            "active",
-            showAllY
-        );
-
-
-    radiusEl.textContent =
-        "R" +
-        radius;
-}
-
-
-// =====================================================
-// EVENTS
-// =====================================================
-
-document
-    .getElementById(
-        "go"
-    )
-    .onclick =
-    refresh;
-
-
-for (
-    const id
-    of
-    [
-        "seed",
-        "x",
-        "y",
-        "z"
-    ]
-) {
-
-    document
-        .getElementById(
-            id
-        )
-        .addEventListener(
-
-            "keydown",
-
-            event => {
-
-                if (
-                    event.key
-                    ===
-                    "Enter"
-                ) {
-
-                    refresh();
-                }
-            }
-        );
-}
-
-
-document
-    .getElementById(
-        "y1"
-    )
-    .onclick =
-    async () => {
-
-        showY1 =
-            !showY1;
-
-
-        updateButtons();
-
-
-        await ensureNeededChunks();
-
-        drawMap();
-    };
-
-
-document
-    .getElementById(
-        "y3"
-    )
-    .onclick =
-    async () => {
-
-        showY3 =
-            !showY3;
-
-
-        updateButtons();
-
-
-        await ensureNeededChunks();
-
-        drawMap();
-    };
-
-
-document
-    .getElementById(
-        "allY"
-    )
-    .onclick =
-    async () => {
-
-        showAllY =
-            !showAllY;
-
-
-        updateButtons();
-
-
-        await ensureNeededChunks();
-
-        drawMap();
-    };
-
-
-document
-    .getElementById(
-        "minus"
-    )
-    .onclick =
-    async () => {
-
-        const index =
-            ZOOMS.indexOf(
-                radius
-            );
-
-
-        if (
-            index > 0
-        ) {
-
-            radius =
-                ZOOMS[
-                    index - 1
-                ];
-
-
-            updateButtons();
-
-
-            await ensureNeededChunks();
-
-            drawMap();
-        }
-    };
-
-
-document
-    .getElementById(
-        "plus"
-    )
-    .onclick =
-    async () => {
-
-        const index =
-            ZOOMS.indexOf(
-                radius
-            );
-
-
-        if (
-            index
-            <
-            ZOOMS.length - 1
-        ) {
-
-            radius =
-                ZOOMS[
-                    index + 1
-                ];
-
-
-            updateButtons();
-
-
-            await ensureNeededChunks();
-
-            drawMap();
-        }
-    };
 
 
 // =====================================================
@@ -3224,142 +2741,129 @@ canvas.addEventListener(
 
     event => {
 
+        if(
+            !currentSurface
+            ||
+            !currentView
+        ){
+
+            return;
+        }
+
+
         const rect =
-            canvas
-            .getBoundingClientRect();
+            canvas.getBoundingClientRect();
 
 
-        const diameter =
-            radius *
-            2
-            +
-            1;
+        const size =
+            currentSurface.length;
 
 
-        const column =
-            Math.max(
+        const col =
+            clamp(
+
+                Math.floor(
+
+                    (
+                        event.clientX
+                        -
+                        rect.left
+                    )
+
+                    /
+                    rect.width
+
+                    *
+                    size
+                ),
 
                 0,
 
-                Math.min(
-
-                    diameter - 1,
-
-                    Math.floor(
-
-                        (
-                            event.clientX
-                            -
-                            rect.left
-                        )
-
-                        /
-                        rect.width
-
-                        *
-                        diameter
-                    )
-                )
+                size - 1
             );
 
 
         const row =
-            Math.max(
+            clamp(
+
+                Math.floor(
+
+                    (
+                        event.clientY
+                        -
+                        rect.top
+                    )
+
+                    /
+                    rect.height
+
+                    *
+                    size
+                ),
 
                 0,
 
-                Math.min(
-
-                    diameter - 1,
-
-                    Math.floor(
-
-                        (
-                            event.clientY
-                            -
-                            rect.top
-                        )
-
-                        /
-                        rect.height
-
-                        *
-                        diameter
-                    )
-                )
+                size - 1
             );
 
 
-        const world =
-            screenToWorld(
+        const cell =
+            currentSurface[
+                row
+            ][
+                col
+            ];
 
-                row,
 
-                column,
-
-                Math.floor(
-                    pos[0]
-                ),
-
-                Math.floor(
-                    pos[2]
-                )
+        const chunkX =
+            floorDiv(
+                cell.x,
+                32
             );
 
 
-        const sample =
-            sampleBlock(
-                world.x,
-                world.z
+        const chunkZ =
+            floorDiv(
+                cell.z,
+                32
             );
 
 
-        if (
-            sample
-        ) {
+        hoverEl.textContent =
 
-            hover.textContent =
+            blockName(
+                cell.id
+            )
 
-                blockName(
-                    sample.id
-                )
+            +
+            " • X "
 
-                +
-                " • X "
+            +
+            cell.x
 
-                +
-                world.x
+            +
+            " • Y "
 
-                +
-                " Y "
+            +
+            cell.y
 
-                +
-                sample.y
+            +
+            " • Z "
 
-                +
-                " Z "
+            +
+            cell.z
 
-                +
-                world.z;
+            +
+            " • Chunk "
 
-        }
-        else {
+            +
+            chunkX
 
-            hover.textContent =
+            +
+            ","
 
-                "X "
-                +
-                world.x
-
-                +
-                " • Z "
-
-                +
-                world.z
-
-                +
-                " • loading/air";
-        }
+            +
+            chunkZ;
     }
 );
 
@@ -3370,8 +2874,47 @@ canvas.addEventListener(
 
     () => {
 
-        hover.textContent =
-            "Maus über Karte → Blockname";
+        hoverEl.textContent =
+            "Maus über Karte → Block • Höhe • Koordinaten • Chunk";
+    }
+);
+
+
+// =====================================================
+// EVENTS
+// =====================================================
+
+document
+    .getElementById("load")
+    .onclick =
+    generate;
+
+
+[
+    seedEl,
+    xEl,
+    zEl,
+    radiusEl
+]
+.forEach(
+
+    element => {
+
+        element.addEventListener(
+
+            "keydown",
+
+            event => {
+
+                if(
+                    event.key ===
+                    "Enter"
+                ){
+
+                    generate();
+                }
+            }
+        );
     }
 );
 
@@ -3380,13 +2923,92 @@ canvas.addEventListener(
 // START
 // =====================================================
 
-updateButtons();
+async function start(){
 
-drawText(
-    "ENGINE LÄDT…"
-);
+    try{
 
-loadEngine();
+        readURL();
+
+
+        statusEl.textContent =
+            "ENGINE LÄDT…";
+
+
+        const [
+            workerSource,
+            blockSource,
+            itemSource
+        ] =
+        await Promise.all([
+
+            loadText(
+                "webWorkerBloxd.js"
+            ),
+
+            loadText(
+                "blockMetadata.js"
+            ),
+
+            loadText(
+                "itemMetadata.js"
+            )
+
+        ]);
+
+
+        workerFunction =
+            extractVariable(
+                workerSource,
+                "webWorkerCodeFunction"
+            );
+
+
+        bmd =
+            extractVariable(
+                blockSource,
+                "bmd"
+            );
+
+
+        imd =
+            extractVariable(
+                itemSource,
+                "imd"
+            );
+
+
+        buildBlockIndex();
+
+
+        statusEl.textContent =
+            "ENGINE ✓";
+
+
+        statusEl.style.color =
+            "#4cff91";
+
+
+        await generate();
+
+    }
+    catch(error){
+
+        console.error(error);
+
+
+        statusEl.textContent =
+            "FEHLER: "
+            +
+            error.message;
+
+
+        statusEl.style.color =
+            "#ff5f68";
+    }
+}
+
+
+start();
 
 })();
 </script>
