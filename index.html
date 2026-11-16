@@ -273,7 +273,7 @@ button:hover{
         </span>
 
         <span>
-            cyan = Chunkgrenze 32×32
+            cyan = Chunkgrenze 32×32 • Originaltexturen: Bloxdy/texture-packs
         </span>
 
     </div>
@@ -362,6 +362,18 @@ const blockTexts =
 let currentSurface = null;
 
 let currentView = null;
+
+const ORIGINAL_TEXTURE_PACK_URL =
+    "https://raw.githubusercontent.com/Bloxdy/texture-packs/main/_json/default.json";
+
+let originalTextureOverrides = {};
+
+const originalTextureImages =
+    new Map();
+
+const textureKeyCache =
+    new Map();
+
 
 
 // =====================================================
@@ -710,6 +722,20 @@ function baseColor(id){
     }
 
 
+    if(
+        t.includes("red sand")
+        ||
+        t.includes("red_sand")
+    ){
+
+        return [
+            181,
+            84,
+            43
+        ];
+    }
+
+
     if(t.includes("sand")){
 
         return [
@@ -1024,6 +1050,455 @@ function noise(
     )
     /
     4294967295;
+}
+
+
+// =====================================================
+// ORIGINAL BLOXD TEXTURES
+// Source: Bloxdy/texture-packs default pack
+// =====================================================
+
+function normalizeTextureName(name){
+
+    return String(name || "")
+        .trim()
+        .toLowerCase()
+        .replace(/&/g,"and")
+        .replace(/['’]/g,"")
+        .replace(/[^a-z0-9]+/g,"_")
+        .replace(/^_+|_+$/g,"");
+}
+
+
+function resolveTextureKey(id){
+
+    const numericId =
+        Number(id);
+
+
+    if(
+        textureKeyCache.has(
+            numericId
+        )
+    ){
+
+        return textureKeyCache.get(
+            numericId
+        );
+    }
+
+
+    const raw =
+        normalizeTextureName(
+            blockName(
+                numericId
+            )
+        );
+
+
+    const withoutBlock =
+        raw.replace(
+            /_block$/,
+            ""
+        );
+
+
+    const candidates =
+        [];
+
+
+    function add(key){
+
+        if(
+            key
+            &&
+            !candidates.includes(key)
+        ){
+
+            candidates.push(key);
+        }
+    }
+
+
+    /*
+        Spezielle Top-Down-Zuordnungen.
+        Die Reihenfolge ist wichtig:
+        Red Sand muss vor normalem Sand kommen.
+    */
+
+    if(
+        raw === "grass"
+        ||
+        raw === "grass_block"
+    ){
+
+        add(
+            "grass_top"
+        );
+    }
+
+
+    if(
+        raw === "cactus"
+    ){
+
+        add(
+            "cactus_top"
+        );
+    }
+
+
+    if(
+        raw.includes(
+            "red_sand"
+        )
+    ){
+
+        if(
+            raw.includes(
+                "sandstone"
+            )
+        ){
+
+            add(
+                raw + "_top"
+            );
+
+            add(
+                raw
+            );
+        }
+        else{
+
+            add(
+                "red_sand"
+            );
+        }
+    }
+
+
+    /*
+        Baum-Blöcke:
+        "Maple Leaves" -> leaves_maple
+        "Maple Log"    -> log_maple
+        "Maple Planks" -> planks_maple
+    */
+
+    let match =
+        raw.match(
+            /^(.+)_leaves?$/
+        );
+
+
+    if(match){
+
+        add(
+            "leaves_" +
+            match[1]
+        );
+    }
+
+
+    match =
+        raw.match(
+            /^(.+)_log$/
+        );
+
+
+    if(match){
+
+        add(
+            "log_" +
+            match[1]
+        );
+    }
+
+
+    match =
+        raw.match(
+            /^(.+)_planks?$/
+        );
+
+
+    if(match){
+
+        add(
+            "planks_" +
+            match[1]
+        );
+    }
+
+
+    /*
+        Top-Textur zuerst, danach normale Textur.
+    */
+
+    add(
+        raw + "_top"
+    );
+
+    add(
+        withoutBlock + "_top"
+    );
+
+    add(
+        raw
+    );
+
+    add(
+        withoutBlock
+    );
+
+
+    /*
+        Einige Bloxd-Namen verwenden andere Reihenfolgen.
+    */
+
+    if(
+        raw.startsWith(
+            "jungle_grass"
+        )
+    ){
+
+        add(
+            "jungle_grass_block"
+        );
+    }
+
+
+    if(
+        raw.startsWith(
+            "pine_grass"
+        )
+    ){
+
+        add(
+            "pine_grass_block"
+        );
+    }
+
+
+    let result =
+        null;
+
+
+    for(
+        const key
+        of
+        candidates
+    ){
+
+        if(
+            Object.prototype.hasOwnProperty.call(
+                originalTextureOverrides,
+                key
+            )
+        ){
+
+            result =
+                key;
+
+            break;
+        }
+    }
+
+
+    textureKeyCache.set(
+        numericId,
+        result
+    );
+
+
+    return result;
+}
+
+
+function loadTextureImage(key){
+
+    if(!key){
+
+        return Promise.resolve(
+            null
+        );
+    }
+
+
+    if(
+        originalTextureImages.has(
+            key
+        )
+    ){
+
+        return Promise.resolve(
+            originalTextureImages.get(
+                key
+            )
+        );
+    }
+
+
+    const source =
+        originalTextureOverrides[
+            key
+        ];
+
+
+    if(!source){
+
+        return Promise.resolve(
+            null
+        );
+    }
+
+
+    return new Promise(
+        resolve => {
+
+            const image =
+                new Image();
+
+
+            image.onload =
+                () => {
+
+                    originalTextureImages.set(
+                        key,
+                        image
+                    );
+
+                    resolve(
+                        image
+                    );
+                };
+
+
+            image.onerror =
+                () => {
+
+                    console.warn(
+                        "Bloxd texture failed:",
+                        key
+                    );
+
+                    resolve(
+                        null
+                    );
+                };
+
+
+            image.src =
+                source;
+        }
+    );
+}
+
+
+async function preloadSurfaceTextures(surface){
+
+    const keys =
+        new Set();
+
+
+    for(
+        const row
+        of
+        surface
+    ){
+
+        for(
+            const cell
+            of
+            row
+        ){
+
+            const key =
+                resolveTextureKey(
+                    cell.id
+                );
+
+
+            if(key){
+
+                keys.add(
+                    key
+                );
+            }
+        }
+    }
+
+
+    await Promise.all(
+
+        [...keys]
+        .map(
+            loadTextureImage
+        )
+    );
+}
+
+
+async function loadOriginalTexturePack(){
+
+    try{
+
+        const response =
+            await fetch(
+                ORIGINAL_TEXTURE_PACK_URL,
+                {
+                    cache:
+                        "force-cache"
+                }
+            );
+
+
+        if(
+            !response.ok
+        ){
+
+            throw new Error(
+                "HTTP " +
+                response.status
+            );
+        }
+
+
+        const pack =
+            await response.json();
+
+
+        originalTextureOverrides =
+            pack.textureOverrides
+            ||
+            {};
+
+
+        textureKeyCache.clear();
+
+
+        console.log(
+            "Original Bloxd textures loaded:",
+            Object.keys(
+                originalTextureOverrides
+            ).length
+        );
+
+    }
+    catch(error){
+
+        /*
+            Karte funktioniert auch ohne Remote-Texturen.
+            Dann werden die bisherigen Fallback-Farben benutzt.
+        */
+
+        console.warn(
+            "Original Bloxd textures unavailable; using fallback renderer.",
+            error
+        );
+
+
+        originalTextureOverrides =
+            {};
+    }
 }
 
 
@@ -1619,6 +2094,103 @@ function drawBlockTexture(
     shade
 ){
 
+    const textureKey =
+        resolveTextureKey(
+            cell.id
+        );
+
+
+    const texture =
+        textureKey
+        ?
+        originalTextureImages.get(
+            textureKey
+        )
+        :
+        null;
+
+
+    /*
+        Wenn die echte Bloxd-Textur vorhanden ist,
+        wird sie 1:1 pixelig von oben gezeichnet.
+    */
+
+    if(texture){
+
+        ctx.imageSmoothingEnabled =
+            false;
+
+
+        ctx.drawImage(
+            texture,
+            px,
+            py,
+            size + .5,
+            size + .5
+        );
+
+
+        /*
+            Höhen-Relief bleibt erhalten,
+            aber nur als leichte transparente Schicht.
+        */
+
+        if(
+            shade < 0
+        ){
+
+            ctx.fillStyle =
+                "rgba(0,0,0,"
+                +
+                Math.min(
+                    .28,
+                    Math.abs(shade) /
+                    100
+                )
+                +
+                ")";
+
+
+            ctx.fillRect(
+                px,
+                py,
+                size + .5,
+                size + .5
+            );
+        }
+        else if(
+            shade > 0
+        ){
+
+            ctx.fillStyle =
+                "rgba(255,255,255,"
+                +
+                Math.min(
+                    .20,
+                    shade /
+                    120
+                )
+                +
+                ")";
+
+
+            ctx.fillRect(
+                px,
+                py,
+                size + .5,
+                size + .5
+            );
+        }
+
+
+        return;
+    }
+
+
+    /*
+        Fallback für Blöcke ohne bekannte Original-Textur.
+    */
+
     const t =
         blockText(
             cell.id
@@ -1633,7 +2205,19 @@ function drawBlockTexture(
 
 
     ctx.fillStyle =
-        `rgb(${main[0]},${main[1]},${main[2]})`;
+        "rgb("
+        +
+        main[0]
+        +
+        ","
+        +
+        main[1]
+        +
+        ","
+        +
+        main[2]
+        +
+        ")";
 
 
     ctx.fillRect(
@@ -1643,11 +2227,6 @@ function drawBlockTexture(
         size + .5
     );
 
-
-    /*
-        Texturen erst anzeigen,
-        wenn die Blöcke groß genug sind.
-    */
 
     if(
         size < 4
@@ -1675,12 +2254,10 @@ function drawBlockTexture(
         );
 
 
-    // ----------------------------
-    // Grass
-    // ----------------------------
-
     if(
-        t.includes("grass")
+        t.includes(
+            "grass"
+        )
     ){
 
         ctx.fillStyle =
@@ -1690,61 +2267,22 @@ function drawBlockTexture(
         ctx.fillRect(
             px + size * n1 * .65,
             py + size * n2 * .65,
-            Math.max(1,size * .12),
-            Math.max(1,size * .12)
-        );
-
-
-        ctx.fillStyle =
-            "rgba(0,60,0,.12)";
-
-
-        ctx.fillRect(
-            px + size * n2 * .75,
-            py + size * n1 * .75,
-            Math.max(1,size * .11),
-            Math.max(1,size * .11)
+            Math.max(
+                1,
+                size * .12
+            ),
+            Math.max(
+                1,
+                size * .12
+            )
         );
     }
 
 
-    // ----------------------------
-    // Leaves
-    // ----------------------------
-
     else if(
-        t.includes("leaf")
-        ||
-        t.includes("leaves")
-    ){
-
-        ctx.fillStyle =
-            "rgba(0,45,0,.18)";
-
-
-        ctx.fillRect(
-            px + size * .15,
-            py + size * .15,
-            Math.max(1,size * .2),
-            Math.max(1,size * .2)
-        );
-
-
-        ctx.fillRect(
-            px + size * .62,
-            py + size * .57,
-            Math.max(1,size * .16),
-            Math.max(1,size * .16)
-        );
-    }
-
-
-    // ----------------------------
-    // Water
-    // ----------------------------
-
-    else if(
-        t.includes("water")
+        t.includes(
+            "water"
+        )
     ){
 
         ctx.fillStyle =
@@ -1755,112 +2293,43 @@ function drawBlockTexture(
             px,
             py + size * .25,
             size,
-            Math.max(1,size * .08)
-        );
-
-
-        ctx.fillRect(
-            px + size * .18,
-            py + size * .67,
-            size * .55,
-            Math.max(1,size * .07)
+            Math.max(
+                1,
+                size * .08
+            )
         );
     }
 
 
-    // ----------------------------
-    // Sand
-    // ----------------------------
-
     else if(
-        t.includes("sand")
-    ){
-
-        ctx.fillStyle =
-            "rgba(100,80,40,.15)";
-
-
-        ctx.fillRect(
-            px + size * n1 * .8,
-            py + size * n2 * .8,
-            Math.max(1,size * .1),
-            Math.max(1,size * .1)
-        );
-    }
-
-
-    // ----------------------------
-    // Dirt
-    // ----------------------------
-
-    else if(
-        t.includes("dirt")
+        t.includes(
+            "sand"
+        )
         ||
-        t.includes("mud")
+        t.includes(
+            "dirt"
+        )
+        ||
+        t.includes(
+            "stone"
+        )
     ){
 
         ctx.fillStyle =
-            "rgba(50,25,10,.16)";
+            "rgba(35,25,15,.10)";
 
 
         ctx.fillRect(
             px + size * n1 * .75,
             py + size * n2 * .75,
-            Math.max(1,size * .14),
-            Math.max(1,size * .14)
-        );
-    }
-
-
-    // ----------------------------
-    // Stone
-    // ----------------------------
-
-    else if(
-        t.includes("stone")
-        ||
-        t.includes("rock")
-    ){
-
-        ctx.fillStyle =
-            "rgba(35,40,45,.15)";
-
-
-        ctx.fillRect(
-            px + size * n1 * .7,
-            py + size * n2 * .7,
-            Math.max(1,size * .16),
-            Math.max(1,size * .12)
-        );
-    }
-
-
-    // ----------------------------
-    // Wood
-    // ----------------------------
-
-    else if(
-        t.includes("wood")
-        ||
-        t.includes("log")
-    ){
-
-        ctx.strokeStyle =
-            "rgba(65,35,15,.25)";
-
-
-        ctx.lineWidth =
             Math.max(
                 1,
-                size * .08
-            );
-
-
-        ctx.strokeRect(
-            px + size * .18,
-            py + size * .18,
-            size * .64,
-            size * .64
+                size * .12
+            ),
+            Math.max(
+                1,
+                size * .12
+            )
         );
     }
 }
@@ -2712,6 +3181,15 @@ async function generate(){
     };
 
 
+    statusEl.textContent =
+        "ORIGINAL-TEXTUREN…";
+
+
+    await preloadSurfaceTextures(
+        surface
+    );
+
+
     renderSurface(
         surface,
         centerX,
@@ -2980,8 +3458,17 @@ async function start(){
         buildBlockIndex();
 
 
+        await loadOriginalTexturePack();
+
+
         statusEl.textContent =
-            "ENGINE ✓";
+            Object.keys(
+                originalTextureOverrides
+            ).length
+            ?
+            "ENGINE ✓ • ORIGINAL TEXTURES ✓"
+            :
+            "ENGINE ✓ • FALLBACK TEXTURES";
 
 
         statusEl.style.color =
