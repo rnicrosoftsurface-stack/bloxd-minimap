@@ -1,0 +1,1562 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<title>Bloxd World Test</title>
+
+<style>
+body{
+    margin:0;
+    background:#071019;
+    color:white;
+    font-family:Arial,sans-serif;
+}
+
+#top{
+    padding:12px;
+    display:flex;
+    gap:8px;
+    align-items:center;
+    flex-wrap:wrap;
+    background:#0d1824;
+}
+
+input,button{
+    background:#09131e;
+    border:1px solid #2c4054;
+    color:white;
+    padding:8px;
+    border-radius:6px;
+}
+
+button{
+    cursor:pointer;
+    font-weight:bold;
+}
+
+#status{
+    margin-left:auto;
+    font-family:Consolas,monospace;
+}
+
+#wrap{
+    display:flex;
+    justify-content:center;
+    padding:15px;
+}
+
+canvas{
+    width:min(800px,95vw);
+    height:auto;
+    image-rendering:pixelated;
+    border:1px solid #294057;
+    background:#111;
+}
+</style>
+</head>
+
+<body>
+
+<div id="top">
+
+    <b>Bloxd World Generator</b>
+
+    <span>Seed</span>
+    <input id="seed" value="124">
+
+    <span>X</span>
+    <input id="x" value="0">
+
+    <span>Z</span>
+    <input id="z" value="0">
+
+    <span>Radius</span>
+    <input id="radius" value="32">
+
+    <button id="load">
+        WELT LADEN
+    </button>
+
+    <span id="status">
+        ENGINE LÄDT…
+    </span>
+
+</div>
+
+<div id="wrap">
+
+    <canvas
+        id="map"
+        width="650"
+        height="650"
+    ></canvas>
+
+</div>
+
+
+<script>
+(() => {
+
+"use strict";
+
+
+// ============================================================
+// CONFIG
+// ============================================================
+
+const CHUNK_SIZE = 32;
+
+/*
+    Wir laden die Welt von:
+
+    Chunk Y +3  = bis Y 127
+    ...
+    Chunk Y -3  = bis Y -96
+*/
+
+const MIN_CHUNK_Y = -3;
+const MAX_CHUNK_Y = 3;
+
+
+// ============================================================
+// UI
+// ============================================================
+
+const canvas =
+    document.getElementById("map");
+
+const ctx =
+    canvas.getContext("2d");
+
+const statusEl =
+    document.getElementById("status");
+
+const seedEl =
+    document.getElementById("seed");
+
+const xEl =
+    document.getElementById("x");
+
+const zEl =
+    document.getElementById("z");
+
+const radiusEl =
+    document.getElementById("radius");
+
+
+// ============================================================
+// GENERATOR DATA
+// ============================================================
+
+let bmd = null;
+let imd = null;
+let workerFunction = null;
+
+let worker = null;
+let workerSeed = null;
+
+const chunks =
+    new Map();
+
+const pending =
+    new Map();
+
+const blockNames =
+    new Map();
+
+const blockTexts =
+    new Map();
+
+
+// ============================================================
+// HELPERS
+// ============================================================
+
+function floorDiv(value, divisor) {
+
+    return Math.floor(
+        value / divisor
+    );
+}
+
+
+function mod(value, divisor) {
+
+    return (
+        (
+            value % divisor
+        )
+        +
+        divisor
+    )
+    %
+    divisor;
+}
+
+
+function normalSeed(value) {
+
+    const text =
+        String(value).trim();
+
+
+    if (/^-?\d+$/.test(text)) {
+
+        const number =
+            Number(text);
+
+
+        if (Number.isSafeInteger(number)) {
+            return number;
+        }
+    }
+
+
+    return text;
+}
+
+
+function chunkKey(
+    seed,
+    cx,
+    cy,
+    cz
+) {
+
+    return (
+        seed +
+        "|" +
+        cx +
+        "|" +
+        cy +
+        "|" +
+        cz
+    );
+}
+
+
+// ============================================================
+// LOAD FILES
+// ============================================================
+
+async function loadText(file) {
+
+    const response =
+        await fetch(
+            "./" + file
+        );
+
+
+    if (!response.ok) {
+
+        throw new Error(
+            file +
+            " HTTP " +
+            response.status
+        );
+    }
+
+
+    return await response.text();
+}
+
+
+function extractVariable(
+    source,
+    variable
+) {
+
+    return new Function(
+
+        source +
+
+        `
+
+        return typeof ${variable} !== "undefined"
+            ? ${variable}
+            : window[${JSON.stringify(variable)}];
+
+        `
+    )();
+}
+
+
+// ============================================================
+// BLOCK METADATA
+// ============================================================
+
+function buildBlockIndex() {
+
+    blockNames.clear();
+    blockTexts.clear();
+
+
+    for (
+        const [
+            name,
+            entry
+        ]
+        of
+        Object.entries(bmd || {})
+    ) {
+
+        const id =
+            Number(entry?.id);
+
+
+        if (!Number.isFinite(id)) {
+            continue;
+        }
+
+
+        blockNames.set(
+            id,
+            name
+        );
+
+
+        blockTexts.set(
+
+            id,
+
+            (
+                name
+                +
+                " "
+                +
+                (
+                    entry?.displayName
+                    ||
+                    ""
+                )
+                +
+                " "
+                +
+                (
+                    entry?.meta?.rootName
+                    ||
+                    ""
+                )
+            )
+            .toLowerCase()
+        );
+    }
+}
+
+
+function blockText(id) {
+
+    return (
+        blockTexts.get(
+            Number(id)
+        )
+        ||
+        ""
+    );
+}
+
+
+function isAir(id) {
+
+    return (
+        Number(id) === 0
+        ||
+        blockText(id)
+            .includes("air")
+    );
+}
+
+
+// ============================================================
+// COLORS
+// ============================================================
+
+function baseColor(id) {
+
+    const t =
+        blockText(id);
+
+
+    if (t.includes("water")) {
+        return [36, 105, 190];
+    }
+
+
+    if (t.includes("lava")) {
+        return [245, 83, 20];
+    }
+
+
+    if (
+        t.includes("grass") ||
+        t.includes("leaf") ||
+        t.includes("leaves")
+    ) {
+
+        return [75, 145, 47];
+    }
+
+
+    if (
+        t.includes("dirt") ||
+        t.includes("mud")
+    ) {
+
+        return [113, 77, 50];
+    }
+
+
+    if (
+        t.includes("sand")
+    ) {
+
+        return [218, 199, 126];
+    }
+
+
+    if (
+        t.includes("snow") ||
+        t.includes("ice")
+    ) {
+
+        return [225, 238, 240];
+    }
+
+
+    if (
+        t.includes("wood") ||
+        t.includes("log") ||
+        t.includes("plank")
+    ) {
+
+        return [126, 88, 51];
+    }
+
+
+    if (
+        t.includes("stone") ||
+        t.includes("rock")
+    ) {
+
+        return [120, 125, 128];
+    }
+
+
+    if (
+        t.includes("clay")
+    ) {
+
+        return [177, 108, 76];
+    }
+
+
+    if (
+        t.includes("cactus")
+    ) {
+
+        return [44, 112, 50];
+    }
+
+
+    if (
+        t.includes("flower") ||
+        t.includes("rose") ||
+        t.includes("poppy")
+    ) {
+
+        return [210, 60, 100];
+    }
+
+
+    /*
+        Fallback:
+
+        Unterschiedliche Blöcke bekommen
+        wenigstens unterschiedliche Farben.
+    */
+
+    let hash = 0;
+
+
+    for (
+        let i = 0;
+        i < t.length;
+        i++
+    ) {
+
+        hash =
+            (
+                hash * 31 +
+                t.charCodeAt(i)
+            )
+            >>> 0;
+    }
+
+
+    return [
+
+        70 +
+        (
+            hash &
+            63
+        ),
+
+        70 +
+        (
+            (
+                hash >> 6
+            )
+            &
+            63
+        ),
+
+        70 +
+        (
+            (
+                hash >> 12
+            )
+            &
+            63
+        )
+
+    ];
+}
+
+
+function shadeColor(
+    color,
+    y
+) {
+
+    /*
+        Leichte Höhen-Schattierung,
+        damit Berge/Täler sichtbar werden.
+    */
+
+    const factor =
+        Math.max(
+            0.72,
+            Math.min(
+                1.25,
+                1 +
+                y / 250
+            )
+        );
+
+
+    return color.map(
+        value =>
+            Math.max(
+                0,
+                Math.min(
+                    255,
+                    Math.round(
+                        value *
+                        factor
+                    )
+                )
+            )
+    );
+}
+
+
+// ============================================================
+// WORKER
+// ============================================================
+
+function createWorker() {
+
+    if (worker) {
+
+        worker.terminate();
+    }
+
+
+    const blob =
+        new Blob(
+
+            [
+                "(" +
+                workerFunction.toString() +
+                ")()"
+            ],
+
+            {
+                type:
+                    "application/javascript"
+            }
+        );
+
+
+    const url =
+        URL.createObjectURL(
+            blob
+        );
+
+
+    worker =
+        new Worker(
+            url
+        );
+
+
+    workerSeed =
+        null;
+
+
+    worker.postMessage({
+
+        type:
+            "workerInit",
+
+        chunkSize:
+            32,
+
+        itemMetadata:
+            imd,
+
+        blockMetadata:
+            bmd
+
+    });
+
+
+    worker.onmessage =
+        event => {
+
+            const result =
+                event.data;
+
+
+            if (
+                !result ||
+                result.type !==
+                "chunkResponse"
+            ) {
+
+                return;
+            }
+
+
+            for (
+                const [
+                    key,
+                    request
+                ]
+                of
+                pending
+            ) {
+
+                if (
+                    request.id !==
+                    result.id
+                ) {
+
+                    continue;
+                }
+
+
+                pending.delete(
+                    key
+                );
+
+
+                const raw =
+                    result.array?.data;
+
+
+                const data =
+                    raw instanceof Uint16Array
+
+                    ?
+
+                    raw
+
+                    :
+
+                    new Uint16Array(
+                        raw?.buffer ||
+                        raw ||
+                        []
+                    );
+
+
+                const chunk = {
+
+                    cx:
+                        request.cx,
+
+                    cy:
+                        request.cy,
+
+                    cz:
+                        request.cz,
+
+                    data
+
+                };
+
+
+                chunks.set(
+                    key,
+                    chunk
+                );
+
+
+                request.resolve(
+                    chunk
+                );
+
+
+                break;
+            }
+        };
+}
+
+
+function setWorkerSeed(seed) {
+
+    if (
+        String(workerSeed) ===
+        String(seed)
+    ) {
+
+        return;
+    }
+
+
+    worker.postMessage({
+
+        type:
+            "createSeed",
+
+        seed,
+
+        dN:
+            1,
+
+        oN:
+            1
+
+    });
+
+
+    workerSeed =
+        seed;
+}
+
+
+// ============================================================
+// CHUNK REQUEST
+// ============================================================
+
+function requestChunk(
+    seed,
+    cx,
+    cy,
+    cz
+) {
+
+    const key =
+        chunkKey(
+            seed,
+            cx,
+            cy,
+            cz
+        );
+
+
+    if (
+        chunks.has(key)
+    ) {
+
+        return Promise.resolve(
+            chunks.get(key)
+        );
+    }
+
+
+    if (
+        pending.has(key)
+    ) {
+
+        return pending
+            .get(key)
+            .promise;
+    }
+
+
+    setWorkerSeed(
+        seed
+    );
+
+
+    const id =
+        (
+            cx * 32
+        )
+        +
+        "|"
+        +
+        (
+            cy * 32
+        )
+        +
+        "|"
+        +
+        (
+            cz * 32
+        )
+        +
+        "|"
+        +
+        seed;
+
+
+    let resolvePromise;
+
+
+    const promise =
+        new Promise(
+            resolve => {
+
+                resolvePromise =
+                    resolve;
+            }
+        );
+
+
+    pending.set(
+
+        key,
+
+        {
+
+            id,
+            cx,
+            cy,
+            cz,
+
+            resolve:
+                resolvePromise,
+
+            promise
+
+        }
+    );
+
+
+    worker.postMessage({
+
+        id,
+
+        type:
+            "chunk",
+
+        array: {
+
+            data:
+                new Uint16Array(
+                    32768
+                ),
+
+            shape: [
+                32,
+                32,
+                32
+            ],
+
+            stride: [
+                1024,
+                32,
+                1
+            ],
+
+            offset:
+                0
+        }
+    });
+
+
+    return promise;
+}
+
+
+// ============================================================
+// BLOCK LOOKUP
+// ============================================================
+
+function getBlock(
+    seed,
+    x,
+    y,
+    z
+) {
+
+    const cx =
+        floorDiv(
+            x,
+            32
+        );
+
+
+    const cy =
+        floorDiv(
+            y,
+            32
+        );
+
+
+    const cz =
+        floorDiv(
+            z,
+            32
+        );
+
+
+    const chunk =
+        chunks.get(
+
+            chunkKey(
+                seed,
+                cx,
+                cy,
+                cz
+            )
+        );
+
+
+    if (!chunk) {
+        return null;
+    }
+
+
+    const lx =
+        mod(
+            x,
+            32
+        );
+
+
+    const ly =
+        mod(
+            y,
+            32
+        );
+
+
+    const lz =
+        mod(
+            z,
+            32
+        );
+
+
+    /*
+        Bloxd chunk layout:
+
+        X * 1024
+        Y * 32
+        Z
+    */
+
+    const index =
+        lx * 1024 +
+        ly * 32 +
+        lz;
+
+
+    return chunk.data[
+        index
+    ];
+}
+
+
+// ============================================================
+// FIND SURFACE
+// ============================================================
+
+function findTopBlock(
+    seed,
+    x,
+    z
+) {
+
+    const maxY =
+        MAX_CHUNK_Y *
+        32 +
+        31;
+
+
+    const minY =
+        MIN_CHUNK_Y *
+        32;
+
+
+    for (
+        let y = maxY;
+        y >= minY;
+        y--
+    ) {
+
+        const id =
+            getBlock(
+                seed,
+                x,
+                y,
+                z
+            );
+
+
+        if (
+            id === null
+        ) {
+
+            continue;
+        }
+
+
+        if (
+            !isAir(id)
+        ) {
+
+            return {
+                id,
+                y
+            };
+        }
+    }
+
+
+    return null;
+}
+
+
+// ============================================================
+// GENERATE MAP
+// ============================================================
+
+async function generate() {
+
+    const seed =
+        normalSeed(
+            seedEl.value
+        );
+
+
+    const centerX =
+        Math.floor(
+            Number(
+                xEl.value
+            )
+            ||
+            0
+        );
+
+
+    const centerZ =
+        Math.floor(
+            Number(
+                zEl.value
+            )
+            ||
+            0
+        );
+
+
+    const radius =
+        Math.max(
+            8,
+            Math.min(
+                96,
+                Math.floor(
+                    Number(
+                        radiusEl.value
+                    )
+                    ||
+                    32
+                )
+            )
+        );
+
+
+    /*
+        URL automatisch aktualisieren
+    */
+
+    const params =
+        new URLSearchParams();
+
+
+    params.set(
+        "seed",
+        seed
+    );
+
+
+    params.set(
+        "x",
+        centerX
+    );
+
+
+    params.set(
+        "z",
+        centerZ
+    );
+
+
+    params.set(
+        "radius",
+        radius
+    );
+
+
+    history.replaceState(
+        null,
+        "",
+        "?" +
+        params.toString()
+    );
+
+
+    statusEl.textContent =
+        "CHUNKS LADEN…";
+
+
+    statusEl.style.color =
+        "#ffd166";
+
+
+    chunks.clear();
+    pending.clear();
+
+
+    createWorker();
+
+
+    const minX =
+        centerX -
+        radius;
+
+
+    const maxX =
+        centerX +
+        radius;
+
+
+    const minZ =
+        centerZ -
+        radius;
+
+
+    const maxZ =
+        centerZ +
+        radius;
+
+
+    const minChunkX =
+        floorDiv(
+            minX,
+            32
+        );
+
+
+    const maxChunkX =
+        floorDiv(
+            maxX,
+            32
+        );
+
+
+    const minChunkZ =
+        floorDiv(
+            minZ,
+            32
+        );
+
+
+    const maxChunkZ =
+        floorDiv(
+            maxZ,
+            32
+        );
+
+
+    const requests =
+        [];
+
+
+    for (
+        let cx = minChunkX;
+        cx <= maxChunkX;
+        cx++
+    ) {
+
+        for (
+            let cz = minChunkZ;
+            cz <= maxChunkZ;
+            cz++
+        ) {
+
+            for (
+                let cy = MIN_CHUNK_Y;
+                cy <= MAX_CHUNK_Y;
+                cy++
+            ) {
+
+                requests.push(
+
+                    requestChunk(
+                        seed,
+                        cx,
+                        cy,
+                        cz
+                    )
+                );
+            }
+        }
+    }
+
+
+    await Promise.all(
+        requests
+    );
+
+
+    statusEl.textContent =
+        "OBERFLÄCHE BERECHNEN…";
+
+
+    const size =
+        radius * 2 +
+        1;
+
+
+    const image =
+        ctx.createImageData(
+            size,
+            size
+        );
+
+
+    const pixels =
+        image.data;
+
+
+    for (
+        let row = 0;
+        row < size;
+        row++
+    ) {
+
+        const worldZ =
+            centerZ -
+            radius +
+            row;
+
+
+        for (
+            let col = 0;
+            col < size;
+            col++
+        ) {
+
+            const worldX =
+                centerX -
+                radius +
+                col;
+
+
+            const top =
+                findTopBlock(
+                    seed,
+                    worldX,
+                    worldZ
+                );
+
+
+            let color =
+                [
+                    15,
+                    20,
+                    26
+                ];
+
+
+            if (top) {
+
+                color =
+                    shadeColor(
+                        baseColor(
+                            top.id
+                        ),
+                        top.y
+                    );
+            }
+
+
+            const index =
+                (
+                    row *
+                    size +
+                    col
+                )
+                *
+                4;
+
+
+            pixels[
+                index
+            ] =
+                color[0];
+
+
+            pixels[
+                index + 1
+            ] =
+                color[1];
+
+
+            pixels[
+                index + 2
+            ] =
+                color[2];
+
+
+            pixels[
+                index + 3
+            ] =
+                255;
+        }
+    }
+
+
+    const temp =
+        document.createElement(
+            "canvas"
+        );
+
+
+    temp.width =
+        size;
+
+    temp.height =
+        size;
+
+
+    temp
+        .getContext(
+            "2d"
+        )
+        .putImageData(
+            image,
+            0,
+            0
+        );
+
+
+    ctx.imageSmoothingEnabled =
+        false;
+
+
+    ctx.clearRect(
+        0,
+        0,
+        canvas.width,
+        canvas.height
+    );
+
+
+    ctx.drawImage(
+        temp,
+        0,
+        0,
+        canvas.width,
+        canvas.height
+    );
+
+
+    /*
+        Spawn / Mittelpunkt
+    */
+
+    ctx.fillStyle =
+        "#ff3344";
+
+
+    ctx.fillRect(
+        canvas.width / 2 - 4,
+        canvas.height / 2 - 4,
+        8,
+        8
+    );
+
+
+    statusEl.textContent =
+        `READY ✓  SEED ${seed}`;
+
+
+    statusEl.style.color =
+        "#4cff91";
+}
+
+
+// ============================================================
+// URL PARAMS
+// ============================================================
+
+function readURL() {
+
+    const p =
+        new URLSearchParams(
+            location.search
+        );
+
+
+    if (
+        p.has("seed")
+    ) {
+
+        seedEl.value =
+            p.get("seed");
+    }
+
+
+    if (
+        p.has("x")
+    ) {
+
+        xEl.value =
+            p.get("x");
+    }
+
+
+    if (
+        p.has("z")
+    ) {
+
+        zEl.value =
+            p.get("z");
+    }
+
+
+    if (
+        p.has("radius")
+    ) {
+
+        radiusEl.value =
+            p.get("radius");
+    }
+}
+
+
+// ============================================================
+// START
+// ============================================================
+
+async function start() {
+
+    try {
+
+        readURL();
+
+
+        statusEl.textContent =
+            "ENGINE LÄDT…";
+
+
+        const [
+            workerSource,
+            blockSource,
+            itemSource
+        ] =
+        await Promise.all([
+
+            loadText(
+                "webWorkerBloxd.js"
+            ),
+
+            loadText(
+                "blockMetadata.js"
+            ),
+
+            loadText(
+                "itemMetadata.js"
+            )
+
+        ]);
+
+
+        workerFunction =
+            extractVariable(
+                workerSource,
+                "webWorkerCodeFunction"
+            );
+
+
+        bmd =
+            extractVariable(
+                blockSource,
+                "bmd"
+            );
+
+
+        imd =
+            extractVariable(
+                itemSource,
+                "imd"
+            );
+
+
+        buildBlockIndex();
+
+
+        statusEl.textContent =
+            "ENGINE ✓";
+
+
+        statusEl.style.color =
+            "#4cff91";
+
+
+        await generate();
+
+    }
+    catch (
+        error
+    ) {
+
+        console.error(
+            error
+        );
+
+
+        statusEl.textContent =
+            "FEHLER: " +
+            error.message;
+
+
+        statusEl.style.color =
+            "#ff5f68";
+    }
+}
+
+
+document
+    .getElementById(
+        "load"
+    )
+    .onclick =
+    generate;
+
+
+start();
+
+})();
+</script>
+
+</body>
+</html>
