@@ -283,8 +283,7 @@ button:hover{
         </span>
 
         <span>
-            cyan = Chunkgrenze 32×32 • Originaltexturen: Bloxdy/texture-packs
-        </span>
+            dunkel = Chunkgrenze 32×32</span>
 
     </div>
 
@@ -704,6 +703,20 @@ function isAir(id){
 
 function ignoreForSurface(id){
 
+    /*
+        Nur echte Luft wird komplett ignoriert.
+        Pflanzen/Blätter/Wasser bleiben erhalten,
+        damit der P-Modus wie der originale
+        SeedFinder mehrere sichtbare Schichten
+        übereinander zeichnen kann.
+    */
+
+    return isAir(id);
+}
+
+
+function isLikelyTransparentSurface(id){
+
     const t =
         blockText(id);
 
@@ -717,6 +730,14 @@ function ignoreForSurface(id){
 
 
     return (
+        t.includes("water")
+        ||
+        t.includes("leaf")
+        ||
+        t.includes("leaves")
+        ||
+        t.includes("glass")
+        ||
         t.includes("flower")
         ||
         t.includes("poppy")
@@ -735,9 +756,16 @@ function ignoreForSurface(id){
         ||
         t.includes("fern")
         ||
+        t.includes("vine")
+        ||
         t.includes("torch")
+        ||
+        t.includes("sapling")
+        ||
+        t.includes("bush")
     );
 }
+
 
 
 // =====================================================
@@ -1965,7 +1993,7 @@ function getBlock(
 // TRUE TOP-DOWN SURFACE
 // =====================================================
 
-function findTopBlock(
+function findSurfaceColumn(
     seed,
     x,
     z
@@ -1977,6 +2005,14 @@ function findTopBlock(
 
     const minY =
         MIN_CHUNK_Y * 32;
+
+
+    const layers =
+        [];
+
+
+    let solidHeight =
+        null;
 
 
     for(
@@ -1996,13 +2032,7 @@ function findTopBlock(
 
         if(
             id === null
-        ){
-
-            continue;
-        }
-
-
-        if(
+            ||
             ignoreForSurface(id)
         ){
 
@@ -2010,14 +2040,83 @@ function findTopBlock(
         }
 
 
-        return {
+        layers.push({
             id,
             y
-        };
+        });
+
+
+        if(
+            !isLikelyTransparentSurface(id)
+        ){
+
+            solidHeight =
+                y;
+
+            break;
+        }
+
+
+        /*
+            Schutz gegen sehr viele transparente
+            Layer in einer einzigen Spalte.
+        */
+
+        if(
+            layers.length >= 12
+        ){
+
+            break;
+        }
     }
 
 
-    return null;
+    if(
+        layers.length === 0
+    ){
+
+        return null;
+    }
+
+
+    /*
+        Beim Scannen kamen die Layer von oben nach unten.
+        Zum Zeichnen brauchen wir unten -> oben.
+    */
+
+    layers.reverse();
+
+
+    const visualTop =
+        layers[
+            layers.length - 1
+        ];
+
+
+    const base =
+        layers[0];
+
+
+    return {
+        id:
+            visualTop.id,
+
+        y:
+            visualTop.y,
+
+        heightY:
+            solidHeight === null
+            ?
+            base.y
+            :
+            solidHeight,
+
+        layers,
+
+        x,
+
+        z
+    };
 }
 
 
@@ -2070,8 +2169,8 @@ function buildSurface(
                 col;
 
 
-            const top =
-                findTopBlock(
+            const column =
+                findSurfaceColumn(
                     seed,
                     worldX,
                     worldZ
@@ -2079,23 +2178,11 @@ function buildSurface(
 
 
             surface[row][col] =
-                top
+                column
 
                 ?
 
-                {
-                    id:
-                        top.id,
-
-                    y:
-                        top.y,
-
-                    x:
-                        worldX,
-
-                    z:
-                        worldZ
-                }
+                column
 
                 :
 
@@ -2104,6 +2191,11 @@ function buildSurface(
 
                     y:
                         MIN_CHUNK_Y * 32,
+
+                    heightY:
+                        MIN_CHUNK_Y * 32,
+
+                    layers:[],
 
                     x:
                         worldX,
@@ -2117,6 +2209,7 @@ function buildSurface(
 
     return surface;
 }
+
 
 
 // =====================================================
@@ -2233,13 +2326,82 @@ function getHeight(
         );
 
 
-    return surface[rr][cc].y;
+    return (
+        surface[rr][cc].heightY
+        ??
+        surface[rr][cc].y
+    );
 }
 
 
 // =====================================================
 // TEXTURED BLOCK
 // =====================================================
+
+function sliceHighlightColor(id){
+
+    const t =
+        blockText(id);
+
+
+    if(
+        t.includes("moonstone")
+    ){
+
+        return {
+            fill:"#ff2338",
+            glow:"rgba(255,35,56,.35)"
+        };
+    }
+
+
+    if(
+        t.includes("diamond")
+    ){
+
+        return {
+            fill:"#1e9dff",
+            glow:"rgba(30,157,255,.30)"
+        };
+    }
+
+
+    if(
+        t.includes("gold")
+    ){
+
+        return {
+            fill:"#e6b91f",
+            glow:"rgba(230,185,31,.24)"
+        };
+    }
+
+
+    if(
+        t.includes("coal")
+    ){
+
+        return {
+            fill:"#0b0d10",
+            glow:"rgba(75,110,135,.22)"
+        };
+    }
+
+
+    if(
+        t.includes("iron")
+    ){
+
+        return {
+            fill:"#f2f4f7",
+            glow:"rgba(255,255,255,.20)"
+        };
+    }
+
+
+    return null;
+}
+
 
 function drawBlockTexture(
     cell,
@@ -2274,6 +2436,62 @@ function drawBlockTexture(
 
 
         return;
+    }
+
+
+    if(
+        currentView
+        &&
+        currentView.surface === false
+    ){
+
+        const special =
+            sliceHighlightColor(
+                cell.id
+            );
+
+
+        if(special){
+
+            ctx.fillStyle =
+                special.fill;
+
+
+            ctx.fillRect(
+                px,
+                py,
+                size + .5,
+                size + .5
+            );
+
+
+            ctx.strokeStyle =
+                special.glow;
+
+
+            ctx.lineWidth =
+                Math.max(
+                    1,
+                    size * .16
+                );
+
+
+            ctx.strokeRect(
+                px + .5,
+                py + .5,
+                Math.max(
+                    0,
+                    size - 1
+                ),
+                Math.max(
+                    0,
+                    size - 1
+                )
+            );
+
+
+            return;
+        }
     }
 
 
@@ -2539,7 +2757,7 @@ function renderSurface(
 
 
     ctx.fillStyle =
-        "#101820";
+        "#071019";
 
 
     ctx.fillRect(
@@ -2549,12 +2767,6 @@ function renderSurface(
         canvas.height
     );
 
-
-    /*
-        Block für Block zeichnen.
-        Dadurch können wir echte kleine
-        Texturen + Relief verwenden.
-    */
 
     for(
         let row = 0;
@@ -2572,15 +2784,23 @@ function renderSurface(
                 surface[row][col];
 
 
-            const hLeft =
+            const h =
                 getHeight(
                     surface,
                     row,
+                    col
+                );
+
+
+            const hDiag =
+                getHeight(
+                    surface,
+                    row - 1,
                     col - 1
                 );
 
 
-            const hRight =
+            const hEast =
                 getHeight(
                     surface,
                     row,
@@ -2588,15 +2808,7 @@ function renderSurface(
                 );
 
 
-            const hUp =
-                getHeight(
-                    surface,
-                    row - 1,
-                    col
-                );
-
-
-            const hDown =
+            const hSouth =
                 getHeight(
                     surface,
                     row + 1,
@@ -2605,30 +2817,66 @@ function renderSurface(
 
 
             /*
-                Licht von links oben.
-
-                Dadurch erkennt man Hügel,
-                Abhänge und Täler.
+                Beleuchtung sehr nah am alten SeedFinder:
+                starke diagonale Kante, kleine Seiten-Schatten.
             */
 
-            const slope =
-                (
-                    hLeft
-                    -
-                    hRight
-                )
-                *
-                3.4
+            let light =
+                1.0;
 
-                +
 
-                (
-                    hUp
+            if(
+                hDiag > h
+            ){
+
+                light -=
+                    0.30;
+            }
+
+
+            if(
+                h > hDiag
+            ){
+
+                light +=
+                    0.12;
+            }
+
+
+            if(
+                hEast > h
+            ){
+
+                light -=
+                    0.04;
+            }
+
+
+            if(
+                hSouth > h
+            ){
+
+                light -=
+                    0.04;
+            }
+
+
+            light =
+                clamp(
+                    light,
+                    0.50,
+                    1.35
+                );
+
+
+            const depthEffect =
+                clamp(
+                    0.40
                     -
-                    hDown
-                )
-                *
-                3.4;
+                    h / 120,
+                    0,
+                    0.40
+                );
 
 
             const localTexture =
@@ -2643,16 +2891,27 @@ function renderSurface(
                     .5
                 )
                 *
-                5;
+                2.5;
 
 
             const shade =
                 clamp(
-                    slope
+                    (
+                        light
+                        *
+                        (
+                            1 -
+                            depthEffect
+                        )
+                        -
+                        1
+                    )
+                    *
+                    72
                     +
                     localTexture,
-                    -26,
-                    26
+                    -32,
+                    20
                 );
 
 
@@ -2666,23 +2925,213 @@ function renderSurface(
                 blockSize;
 
 
-            drawBlockTexture(
+            const layers =
+                (
+                    currentView
+                    &&
+                    currentView.surface
+                    &&
+                    Array.isArray(
+                        cell.layers
+                    )
+                    &&
+                    cell.layers.length > 0
+                )
 
-                cell,
+                ?
 
-                px,
+                cell.layers
 
-                py,
+                :
 
-                blockSize,
+                [
+                    {
+                        id:
+                            cell.id,
 
-                baseColor(
-                    cell.id
-                ),
+                        y:
+                            cell.y
+                    }
+                ];
 
-                shade
-            );
+
+            /*
+                Unten -> oben zeichnen.
+                Transparente Blatt-/Pflanzen-Texturen
+                liegen dadurch wie im SeedFinder über
+                dem darunterliegenden Boden.
+            */
+
+            for(
+                const layer
+                of
+                layers
+            ){
+
+                drawBlockTexture(
+                    {
+                        ...cell,
+
+                        id:
+                            layer.id,
+
+                        y:
+                            layer.y
+                    },
+                    px,
+                    py,
+                    blockSize,
+                    baseColor(
+                        layer.id
+                    ),
+                    shade
+                );
+            }
         }
+    }
+
+
+    /*
+        Kleine dunkle Höhenkanten erzeugen die
+        terrassenartige Relief-Optik der Vorlage.
+    */
+
+    if(
+        currentView
+        &&
+        currentView.surface
+        &&
+        blockSize >= 2
+    ){
+
+        ctx.save();
+
+
+        for(
+            let row = 0;
+            row < size;
+            row++
+        ){
+
+            for(
+                let col = 0;
+                col < size;
+                col++
+            ){
+
+                const h =
+                    getHeight(
+                        surface,
+                        row,
+                        col
+                    );
+
+
+                const left =
+                    getHeight(
+                        surface,
+                        row,
+                        col - 1
+                    );
+
+
+                const up =
+                    getHeight(
+                        surface,
+                        row - 1,
+                        col
+                    );
+
+
+                const px =
+                    col *
+                    blockSize;
+
+
+                const py =
+                    row *
+                    blockSize;
+
+
+                if(
+                    left > h
+                ){
+
+                    const alpha =
+                        Math.min(
+                            .34,
+                            .09
+                            +
+                            (
+                                left -
+                                h
+                            )
+                            *
+                            .035
+                        );
+
+
+                    ctx.fillStyle =
+                        "rgba(0,0,0,"
+                        +
+                        alpha
+                        +
+                        ")";
+
+
+                    ctx.fillRect(
+                        px,
+                        py,
+                        Math.max(
+                            1,
+                            blockSize * .16
+                        ),
+                        blockSize
+                    );
+                }
+
+
+                if(
+                    up > h
+                ){
+
+                    const alpha =
+                        Math.min(
+                            .34,
+                            .09
+                            +
+                            (
+                                up -
+                                h
+                            )
+                            *
+                            .035
+                        );
+
+
+                    ctx.fillStyle =
+                        "rgba(0,0,0,"
+                        +
+                        alpha
+                        +
+                        ")";
+
+
+                    ctx.fillRect(
+                        px,
+                        py,
+                        blockSize,
+                        Math.max(
+                            1,
+                            blockSize * .16
+                        )
+                    );
+                }
+            }
+        }
+
+
+        ctx.restore();
     }
 
 
@@ -2697,6 +3146,7 @@ function renderSurface(
 
     drawCenter();
 }
+
 
 
 // =====================================================
@@ -2800,7 +3250,7 @@ function drawGrid(
 
 
     ctx.strokeStyle =
-        "rgba(70,205,255,.58)";
+        "rgba(0,0,0,.42)";
 
 
     ctx.lineWidth =
@@ -2905,129 +3355,7 @@ function drawGrid(
     }
 
 
-    // -----------------------------
-    // CHUNK COORDINATES
-    // -----------------------------
 
-    ctx.font =
-        "10px Consolas";
-
-
-    ctx.textBaseline =
-        "top";
-
-
-    for(
-        let row = 0;
-        row < size;
-        row++
-    ){
-
-        const wz =
-            startZ +
-            row;
-
-
-        if(
-            mod(
-                wz,
-                32
-            )
-            !==
-            0
-        ){
-
-            continue;
-        }
-
-
-        for(
-            let col = 0;
-            col < size;
-            col++
-        ){
-
-            const wx =
-                startX +
-                col;
-
-
-            if(
-                mod(
-                    wx,
-                    32
-                )
-                !==
-                0
-            ){
-
-                continue;
-            }
-
-
-            const cx =
-                floorDiv(
-                    wx,
-                    32
-                );
-
-
-            const cz =
-                floorDiv(
-                    wz,
-                    32
-                );
-
-
-            const text =
-                `${cx},${cz}`;
-
-
-            const px =
-                col *
-                blockSize
-                +
-                3;
-
-
-            const py =
-                row *
-                blockSize
-                +
-                3;
-
-
-            ctx.fillStyle =
-                "rgba(0,0,0,.55)";
-
-
-            ctx.fillRect(
-
-                px - 2,
-
-                py - 1,
-
-                ctx.measureText(
-                    text
-                ).width
-                +
-                5,
-
-                13
-            );
-
-
-            ctx.fillStyle =
-                "rgba(220,245,255,.88)";
-
-
-            ctx.fillText(
-                text,
-                px,
-                py
-            );
-        }
-    }
 
 
     ctx.restore();
