@@ -225,6 +225,16 @@ button:hover{
     >
 
     <label>
+        Y / MODE
+    </label>
+
+    <input
+        id="yMode"
+        value="p"
+        title="p = Oberfläche, Zahl = exakte Y-Ebene"
+    >
+
+    <label>
         RADIUS
     </label>
 
@@ -269,7 +279,7 @@ button:hover{
     <div id="info">
 
         <span>
-            feines Raster = 1 Block
+            Y/MODE: p = Oberfläche • Zahl = exakte Y-Ebene
         </span>
 
         <span>
@@ -331,6 +341,9 @@ const xEl =
 
 const zEl =
     document.getElementById("z");
+
+const yModeEl =
+    document.getElementById("yMode");
 
 const radiusEl =
     document.getElementById("radius");
@@ -439,6 +452,61 @@ function normalSeed(value){
 
 
     return text;
+}
+
+
+function parseYMode(value){
+
+    const text =
+        String(value ?? "")
+        .trim()
+        .toLowerCase();
+
+
+    if(
+        text === "p"
+        ||
+        text === "surface"
+        ||
+        text === "top"
+    ){
+
+        return {
+            surface:true,
+            y:null,
+            text:"p"
+        };
+    }
+
+
+    if(
+        /^-?\d+$/.test(text)
+    ){
+
+        const y =
+            Math.trunc(
+                Number(text)
+            );
+
+
+        if(
+            Number.isFinite(y)
+        ){
+
+            return {
+                surface:false,
+                y,
+                text:String(y)
+            };
+        }
+    }
+
+
+    return {
+        surface:true,
+        y:null,
+        text:"p"
+    };
 }
 
 
@@ -2052,6 +2120,94 @@ function buildSurface(
 
 
 // =====================================================
+// EXACT Y LAYER
+// =====================================================
+
+function buildLayer(
+    seed,
+    centerX,
+    centerZ,
+    radius,
+    targetY
+){
+
+    const size =
+        radius * 2 + 1;
+
+
+    const layer =
+        Array.from(
+            {
+                length:size
+            },
+            () =>
+                new Array(size)
+        );
+
+
+    for(
+        let row = 0;
+        row < size;
+        row++
+    ){
+
+        const worldZ =
+            centerZ
+            -
+            radius
+            +
+            row;
+
+
+        for(
+            let col = 0;
+            col < size;
+            col++
+        ){
+
+            const worldX =
+                centerX
+                -
+                radius
+                +
+                col;
+
+
+            const id =
+                getBlock(
+                    seed,
+                    worldX,
+                    targetY,
+                    worldZ
+                );
+
+
+            layer[row][col] = {
+                id:
+                    id === null
+                    ?
+                    0
+                    :
+                    id,
+
+                y:
+                    targetY,
+
+                x:
+                    worldX,
+
+                z:
+                    worldZ
+            };
+        }
+    }
+
+
+    return layer;
+}
+
+
+// =====================================================
 // HEIGHT HELPERS
 // =====================================================
 
@@ -2093,6 +2249,33 @@ function drawBlockTexture(
     base,
     shade
 ){
+
+    /*
+        In einer festen Y-Ebene bedeutet Air:
+        dort ist auf exakt dieser Höhe kein Block.
+    */
+
+    if(
+        isAir(
+            cell.id
+        )
+    ){
+
+        ctx.fillStyle =
+            "#071019";
+
+
+        ctx.fillRect(
+            px,
+            py,
+            size + .5,
+            size + .5
+        );
+
+
+        return;
+    }
+
 
     const textureKey =
         resolveTextureKey(
@@ -2937,6 +3120,13 @@ function readURL(){
     }
 
 
+    if(p.has("y")){
+
+        yModeEl.value =
+            p.get("y");
+    }
+
+
     if(p.has("radius")){
 
         radiusEl.value =
@@ -2949,6 +3139,7 @@ function updateURL(
     seed,
     x,
     z,
+    yMode,
     radius
 ){
 
@@ -2971,6 +3162,12 @@ function updateURL(
     p.set(
         "z",
         z
+    );
+
+
+    p.set(
+        "y",
+        yMode
     );
 
 
@@ -3022,6 +3219,16 @@ async function generate(){
         );
 
 
+    const yMode =
+        parseYMode(
+            yModeEl.value
+        );
+
+
+    yModeEl.value =
+        yMode.text;
+
+
     const radius =
         clamp(
 
@@ -3047,6 +3254,7 @@ async function generate(){
         seed,
         centerX,
         centerZ,
+        yMode.text,
         radius
     );
 
@@ -3119,6 +3327,25 @@ async function generate(){
         [];
 
 
+    const minLoadChunkY =
+        yMode.surface
+        ?
+        MIN_CHUNK_Y
+        :
+        floorDiv(
+            yMode.y,
+            CHUNK_SIZE
+        );
+
+
+    const maxLoadChunkY =
+        yMode.surface
+        ?
+        MAX_CHUNK_Y
+        :
+        minLoadChunkY;
+
+
     for(
         let cx = minChunkX;
         cx <= maxChunkX;
@@ -3132,8 +3359,8 @@ async function generate(){
         ){
 
             for(
-                let cy = MIN_CHUNK_Y;
-                cy <= MAX_CHUNK_Y;
+                let cy = minLoadChunkY;
+                cy <= maxLoadChunkY;
                 cy++
             ){
 
@@ -3157,15 +3384,37 @@ async function generate(){
 
 
     statusEl.textContent =
-        "OBERFLÄCHE…";
+        yMode.surface
+        ?
+        "OBERFLÄCHE…"
+        :
+        "EBENE Y "
+        +
+        yMode.y
+        +
+        "…";
 
 
     const surface =
+        yMode.surface
+
+        ?
+
         buildSurface(
             seed,
             centerX,
             centerZ,
             radius
+        )
+
+        :
+
+        buildLayer(
+            seed,
+            centerX,
+            centerZ,
+            radius,
+            yMode.y
         );
 
 
@@ -3177,7 +3426,11 @@ async function generate(){
         seed,
         centerX,
         centerZ,
-        radius
+        radius,
+        surface:
+            yMode.surface,
+        y:
+            yMode.y
     };
 
 
@@ -3201,7 +3454,17 @@ async function generate(){
     statusEl.textContent =
         "READY ✓ SEED "
         +
-        seed;
+        seed
+        +
+        (
+            yMode.surface
+            ?
+            " • TOP"
+            :
+            " • Y "
+            +
+            yMode.y
+        );
 
 
     statusEl.style.color =
@@ -3353,7 +3616,7 @@ canvas.addEventListener(
     () => {
 
         hoverEl.textContent =
-            "Maus über Karte → Block • Höhe • Koordinaten • Chunk";
+            "Maus über Karte → Block • Y • Koordinaten • Chunk";
     }
 );
 
@@ -3372,6 +3635,7 @@ document
     seedEl,
     xEl,
     zEl,
+    yModeEl,
     radiusEl
 ]
 .forEach(
