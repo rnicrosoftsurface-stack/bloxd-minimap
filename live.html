@@ -240,6 +240,70 @@ body{padding:14px;display:block}
 #miniManual #top button{font-size:10px;height:28px}
 #miniManual #top #radius{width:55px!important}
 
+
+/* Live Minimap v2: larger readable view, upright tiles, accessible controls */
+body{padding:18px;max-width:100%}
+#miniApp{
+ width:min(670px,calc(100vw - 36px));
+ height:min(940px,calc(100dvh - 36px));
+ max-width:calc(100vw - 36px);max-height:calc(100dvh - 36px);
+ border-radius:16px
+}
+#miniHead{padding:14px 16px 8px;min-height:66px}
+#miniHeadTitle{font-size:19px}
+#miniHead #liveStatus{font-size:12px;letter-spacing:.2px}
+#miniHead #status{font-size:11px;max-width:220px}
+#miniControls{min-height:62px;gap:8px;padding:8px 16px 10px}
+#miniControls button,#miniExtras button{height:36px;padding:0 11px;font-size:12px}
+#miniRadius{font-size:13px;min-width:42px}
+#miniScroll{padding:12px 16px 16px}
+#miniMeta{font-size:11px;margin-bottom:8px}
+#mapWrap{
+ width:min(590px,100%)!important;
+ height:auto!important;
+ aspect-ratio:1;
+ max-width:100%!important;
+ border-radius:10px
+}
+#map,#miniOreCanvas{transform:none!important;image-rendering:pixelated}
+#livePlayerMarker .ring{width:17px;height:17px;border:2px solid white;background:#6eeaff}
+#livePlayerMarker .tag{left:21px;top:-1px;font-size:12px}
+#miniCoords{font-size:12px;line-height:1.5;margin-top:10px}
+#compass{font-size:11px!important;margin:7px 0 11px!important}
+#hover{font-size:11px!important;min-height:36px}
+#miniApp #liveControls{
+ display:flex!important;position:static!important;
+ gap:8px;flex-wrap:wrap;align-items:center;
+ padding:8px 16px 12px;border-bottom:1px solid #1f3142;
+ margin:0!important
+}
+#miniApp #liveControls label{display:none!important}
+#miniApp #liveControls button{
+ height:36px;flex:1;min-width:100px;
+ border:1px solid #2e465a;border-radius:7px;
+ background:#0b1722;color:#eaf4ff;
+ font:800 12px Arial,sans-serif;padding:0 11px;
+ cursor:pointer
+}
+#miniApp #liveControls button.active{background:#184534;border-color:#44bd89}
+#miniApp #liveControls #liveCenter{background:#193e56;border-color:#4697c3}
+#miniExtras{margin-top:13px;padding-top:12px}
+#miniNote{font-size:11px;line-height:1.5}
+#miniManual summary{font-size:12px;padding:12px}
+#miniManual #top label{font-size:11px!important}
+#miniManual #top input{width:95px!important}
+@media(max-width:530px){
+ body{padding:8px}
+ #miniApp{width:calc(100vw - 16px);height:calc(100dvh - 16px);max-width:none;max-height:none}
+ #miniHead{padding:9px 11px 6px}
+ #miniHeadTitle{font-size:16px}
+ #miniControls{padding:6px 10px;gap:5px}
+ #miniControls button{height:30px;font-size:10px;padding:0 6px}
+ #miniScroll{padding:9px 11px}
+ #miniApp #liveControls{padding:7px 10px 9px}
+ #miniApp #liveControls button{height:32px;min-width:85px;font-size:10px}
+}
+
 </style>
 </head>
 
@@ -2983,14 +3047,10 @@ function renderSurface(
                 );
 
 
-            const px =
-                col *
-                blockSize;
+            const px = (size - 1 - row) * blockSize;
 
 
-            const py =
-                row *
-                blockSize;
+            const py = (size - 1 - col) * blockSize;
 
 
             const layers =
@@ -3221,212 +3281,33 @@ function renderSurface(
 // BLOCK GRID + CHUNK LINES
 // =====================================================
 
-function drawGrid(
-    centerX,
-    centerZ,
-    radius,
-    size,
-    blockSize
-){
-
+function drawGrid(centerX,centerZ,radius,size,blockSize){
     ctx.save();
-
-
-    // -----------------------------
-    // BLOCK GRID
-    // -----------------------------
-
-    if(
-        blockSize >= 3
-    ){
-
-        ctx.strokeStyle =
-            blockSize >= 6
-
-            ?
-
-            "rgba(255,255,255,.065)"
-
-            :
-
-            "rgba(255,255,255,.035)";
-
-
-        ctx.lineWidth =
-            1;
-
-
-        for(
-            let i = 0;
-            i <= size;
-            i++
-        ){
-
-            const p =
-                Math.round(
-                    i *
-                    blockSize
-                )
-                +
-                .5;
-
-
-            ctx.beginPath();
-
-            ctx.moveTo(
-                p,
-                0
-            );
-
-            ctx.lineTo(
-                p,
-                canvas.height
-            );
-
-            ctx.stroke();
-
-
-            ctx.beginPath();
-
-            ctx.moveTo(
-                0,
-                p
-            );
-
-            ctx.lineTo(
-                canvas.width,
-                p
-            );
-
-            ctx.stroke();
-        }
-    }
-
-
-    // -----------------------------
-    // CHUNK LINES
-    // -----------------------------
-
-    const startX =
-        centerX -
-        radius;
-
-
-    const startZ =
-        centerZ -
-        radius;
-
-
-    ctx.strokeStyle =
-        "rgba(0,0,0,.42)";
-
-
-    ctx.lineWidth =
-        1.5;
-
-
-    for(
-        let col = 0;
-        col <= size;
-        col++
-    ){
-
-        const worldX =
-            startX +
-            col;
-
-
-        if(
-            mod(
-                worldX,
-                32
-            )
-            !==
-            0
-        ){
-
-            continue;
-        }
-
-
-        const px =
-            Math.round(
-                col *
-                blockSize
-            )
-            +
-            .5;
-
-
+    // Dezente Linien fuer jeden einzelnen Block.
+    if(blockSize>=2.3){
+        ctx.strokeStyle="rgba(0,0,0,.11)";
+        ctx.lineWidth=.8;
         ctx.beginPath();
-
-        ctx.moveTo(
-            px,
-            0
-        );
-
-        ctx.lineTo(
-            px,
-            canvas.height
-        );
-
+        for(let i=0;i<=size;i++){
+            const p=Math.round(i*blockSize)+.5;
+            ctx.moveTo(p,0);ctx.lineTo(p,canvas.height);
+            ctx.moveTo(0,p);ctx.lineTo(canvas.width,p);
+        }
         ctx.stroke();
     }
-
-
-    for(
-        let row = 0;
-        row <= size;
-        row++
-    ){
-
-        const worldZ =
-            startZ +
-            row;
-
-
-        if(
-            mod(
-                worldZ,
-                32
-            )
-            !==
-            0
-        ){
-
-            continue;
-        }
-
-
-        const py =
-            Math.round(
-                row *
-                blockSize
-            )
-            +
-            .5;
-
-
-        ctx.beginPath();
-
-        ctx.moveTo(
-            0,
-            py
-        );
-
-        ctx.lineTo(
-            canvas.width,
-            py
-        );
-
-        ctx.stroke();
+    // Chunkgrenzen: +Z nach links, +X nach oben.
+    ctx.strokeStyle="rgba(0,0,0,.36)";
+    ctx.lineWidth=1.25;
+    ctx.beginPath();
+    for(let z=Math.floor((centerZ-radius)/32)*32;z<=centerZ+radius+1;z+=32){
+        const sx=(centerZ+radius+1-z)*blockSize+.5;
+        if(sx>=0&&sx<=canvas.width){ctx.moveTo(sx,0);ctx.lineTo(sx,canvas.height);}
     }
-
-
-
-
-
-    ctx.restore();
+    for(let x=Math.floor((centerX-radius)/32)*32;x<=centerX+radius+1;x+=32){
+        const sy=(centerX+radius+1-x)*blockSize+.5;
+        if(sy>=0&&sy<=canvas.height){ctx.moveTo(0,sy);ctx.lineTo(canvas.width,sy);}
+    }
+    ctx.stroke();ctx.restore();
 }
 
 
@@ -3877,133 +3758,21 @@ async function generate(){
 // HOVER
 // =====================================================
 
-canvas.addEventListener(
-
-    "mousemove",
-
-    event => {
-
-        if(
-            !currentSurface
-            ||
-            !currentView
-        ){
-
-            return;
-        }
-
-
-        const rect =
-            canvas.getBoundingClientRect();
-
-
-        const size =
-            currentSurface.length;
-
-
-        const col =
-            clamp(
-
-                Math.floor(
-
-                    (
-                        rect.bottom - event.clientY
-                    )
-
-                    /
-                    rect.width
-
-                    *
-                    size
-                ),
-
-                0,
-
-                size - 1
-            );
-
-
-        const row =
-            clamp(
-
-                Math.floor(
-
-                    (
-                        rect.right - event.clientX
-                    )
-
-                    /
-                    rect.height
-
-                    *
-                    size
-                ),
-
-                0,
-
-                size - 1
-            );
-
-
-        const cell =
-            currentSurface[
-                row
-            ][
-                col
-            ];
-
-
-        const chunkX =
-            floorDiv(
-                cell.x,
-                32
-            );
-
-
-        const chunkZ =
-            floorDiv(
-                cell.z,
-                32
-            );
-
-
-        hoverEl.textContent =
-
-            blockName(
-                cell.id
-            )
-
-            +
-            " • X "
-
-            +
-            cell.x
-
-            +
-            " • Y "
-
-            +
-            cell.y
-
-            +
-            " • Z "
-
-            +
-            cell.z
-
-            +
-            " • Chunk "
-
-            +
-            chunkX
-
-            +
-            ","
-
-            +
-            chunkZ;
-    }
-);
+canvas.addEventListener("mousemove",event=>{
+    if(!currentSurface||!currentView)return;
+    const rect=canvas.getBoundingClientRect();
+    const size=currentSurface.length;
+    const screenX=clamp(Math.floor((event.clientX-rect.left)/rect.width*size),0,size-1);
+    const screenY=clamp(Math.floor((event.clientY-rect.top)/rect.height*size),0,size-1);
+    // Oben ist +X, links ist +Z.
+    const row=size-1-screenX;
+    const col=size-1-screenY;
+    const cell=currentSurface[row]?.[col];
+    if(!cell)return;
+    hoverEl.textContent=blockName(cell.id)+" • X "+cell.x+
+        " • Y "+cell.y+" • Z "+cell.z+
+        " • Chunk "+floorDiv(cell.x,32)+","+floorDiv(cell.z,32);
+});
 
 
 canvas.addEventListener(
@@ -4301,7 +4070,7 @@ function miniInitUI(){
     miniY1Button=addButton("Y+1",()=>{
         miniY1=!miniY1;miniButtons();void miniOres();
     },"yellow");
-    miniAllButton=addButton("ALLE ERZE",()=>{
+    miniAllButton=addButton("DIAS / MOON",()=>{
         miniAll=!miniAll;miniButtons();void miniOres();
     },"red");
     miniRad=document.createElement("span");miniRad.id="miniRadius";controls.appendChild(miniRad);
@@ -4316,6 +4085,9 @@ function miniInitUI(){
     miniOreCanvas.width=canvas.width;miniOreCanvas.height=canvas.height;
     miniOreCtx=miniOreCanvas.getContext("2d");
     wrap.insertBefore(miniOreCanvas,liveMarkerEl);
+    // Hoehere Canvasaufloesung fuer die groessere Karte.
+    canvas.width=640;canvas.height=640;
+    miniOreCanvas.width=640;miniOreCanvas.height=640;
     miniCoords=document.createElement("div");miniCoords.id="miniCoords";
     miniCoords.textContent="X ---   Y ---   Z ---";
     const compass=document.getElementById("compass");
@@ -4325,16 +4097,34 @@ function miniInitUI(){
     main.insertBefore(compass,hover);
     const extras=document.createElement("div");extras.id="miniExtras";
     const extraTitle=document.createElement("strong");extraTitle.textContent="EXTRAS";
-    extras.append(extraTitle,document.getElementById("liveControls"));
+    extras.append(extraTitle);
     const note=document.createElement("div");note.id="miniNote";
-    note.textContent="Blau = Diamant · Rot = Moonstone. Erzpositionen stammen aus der generierten Welt.";
+    note.textContent="Blau = Diamant · Rot = Moonstone. Es werden nur Erze auf Y und Y+1 angezeigt. Generatorfunde sind Prognosen, kein Nachweis für noch vorhandenes Erz.";
     extras.appendChild(note);
     const manual=document.createElement("details");manual.id="miniManual";
     const summary=document.createElement("summary");
     summary.textContent="MANUELLE POSITION / EINSTELLUNGEN";
     manual.append(summary,document.getElementById("top"));
     scroll.append(meta,main,extras,manual);
-    miniApp.append(header,controls,scroll);
+    const nav=document.getElementById("liveControls");
+    const followButton=document.createElement("button");
+    followButton.id="miniFollowButton";
+    const yButton=document.createElement("button");
+    yButton.id="miniYFollowButton";
+    followButton.addEventListener("click",()=>{
+        liveFollowEl.checked=!liveFollowEl.checked;
+        miniButtons();
+        if(liveFollowEl.checked)void liveRecenter(true);
+    });
+    yButton.addEventListener("click",()=>{
+        liveFollowYEl.checked=!liveFollowYEl.checked;
+        yModeEl.value=liveFollowYEl.checked
+            ?String(livePosition?Math.floor(livePosition.y):-86):"p";
+        miniButtons();
+        void miniReload();
+    });
+    nav.prepend(followButton,yButton);
+    miniApp.append(header,controls,nav,scroll);
     miniButtons();
     setInterval(miniButtons,1000);
 }
@@ -4348,6 +4138,16 @@ function miniButtons(){
     miniAllButton.classList.toggle("active",miniAll);
     miniRad.textContent="R "+radiusEl.value;
     miniSeedLabel.textContent="SEED "+seedEl.value;
+    const followButton=document.getElementById("miniFollowButton");
+    const yButton=document.getElementById("miniYFollowButton");
+    if(followButton){
+        followButton.textContent=liveFollowEl.checked?"FOLGEN: AN":"FOLGEN: AUS";
+        followButton.classList.toggle("active",liveFollowEl.checked);
+    }
+    if(yButton){
+        yButton.textContent=liveFollowYEl.checked?"Y LIVE: AN":"Y LIVE: AUS";
+        yButton.classList.toggle("active",liveFollowYEl.checked);
+    }
 }
 async function miniReload(){
     ++miniOreRequest;
@@ -4377,8 +4177,8 @@ function miniPoint(x,z,color,bright=false){
     const view=currentView;
     if(!view)return;
     const scale=miniOreCanvas.width/(view.radius*2+1);
-    const px=(x-view.centerX+view.radius+.5)*scale;
-    const py=(z-view.centerZ+view.radius+.5)*scale;
+    const px=(view.centerZ+view.radius+.5-z)*scale;
+    const py=(view.centerX+view.radius+.5-x)*scale;
     if(px<0||py<0||px>miniOreCanvas.width||py>miniOreCanvas.height)return;
     const w=Math.max(3,Math.min(12,scale*(bright?.74:.58)));
     miniOreCtx.fillStyle=color;
@@ -4393,43 +4193,32 @@ async function miniOres(){
     if((!miniY1&&!miniAll)||!currentView||!worker)return;
     const v={...currentView};
     const py=livePosition?Math.floor(livePosition.y):(v.y??-86);
-    const cx0=floorDiv(v.centerX-v.radius,32), cx1=floorDiv(v.centerX+v.radius,32);
-    const cz0=floorDiv(v.centerZ-v.radius,32), cz1=floorDiv(v.centerZ+v.radius,32);
-    const levels=new Set();
-    if(miniY1)levels.add(floorDiv(py+1,32));
-    if(miniAll)[-4,-3,-2].forEach(y=>levels.add(y));
+    const levels=miniAll?[py,py+1]:[py+1];
+    const cx0=floorDiv(v.centerX-v.radius,32);
+    const cx1=floorDiv(v.centerX+v.radius,32);
+    const cz0=floorDiv(v.centerZ-v.radius,32);
+    const cz1=floorDiv(v.centerZ+v.radius,32);
+    const cySet=[...new Set(levels.map(y=>floorDiv(y,32)))];
     const jobs=[];
-    for(let cx=cx0;cx<=cx1;cx++){
-        for(let cz=cz0;cz<=cz1;cz++){
-            for(const cy of levels){
-                jobs.push(requestChunk(v.seed,cx,cy,cz));
-            }
-        }
-    }
+    for(let cx=cx0;cx<=cx1;cx++)
+    for(let cz=cz0;cz<=cz1;cz++)
+    for(const cy of cySet)
+        jobs.push(requestChunk(v.seed,cx,cy,cz));
     try{
         await Promise.race([
             Promise.all(jobs),
-            new Promise((_,reject)=>setTimeout(()=>reject(Error("Erz-Timeout")),18000))
+            new Promise((_,reject)=>setTimeout(()=>reject(Error("Ore timeout")),18000))
         ]);
-        if(token!==miniOreRequest||currentView?.centerX!==v.centerX||currentView?.centerZ!==v.centerZ||currentView?.radius!==v.radius)return;
-        if(miniAll){
-            for(let cx=cx0;cx<=cx1;cx++)for(let cz=cz0;cz<=cz1;cz++)for(const cy of [-4,-3,-2]){
-                const ch=chunks.get(chunkKey(v.seed,cx,cy,cz));
-                if(!ch)continue;
-                for(let i=0;i<ch.data.length;i++){
-                    const color=miniOreColor(ch.data[i]);if(!color)continue;
-                    const x=cx*32+Math.floor(i/1024);
-                    const z=cz*32+(i%32);
-                    miniPoint(x,z,color);
-                }
-            }
-        }
-        if(miniY1){
-            for(let x=v.centerX-v.radius;x<=v.centerX+v.radius;x++)
-            for(let z=v.centerZ-v.radius;z<=v.centerZ+v.radius;z++){
-                const color=miniOreColor(getBlock(v.seed,x,py+1,z));
-                if(color)miniPoint(x,z,color,true);
-            }
+        if(token!==miniOreRequest ||
+            currentView?.centerX!==v.centerX ||
+            currentView?.centerZ!==v.centerZ ||
+            currentView?.radius!==v.radius ||
+            String(currentView?.seed)!==String(v.seed))return;
+        for(let x=v.centerX-v.radius;x<=v.centerX+v.radius;x++)
+        for(let z=v.centerZ-v.radius;z<=v.centerZ+v.radius;z++)
+        for(const y of levels){
+            const color=miniOreColor(getBlock(v.seed,x,y,z));
+            if(color)miniPoint(x,z,color,y===py+1);
         }
     }catch(error){
         if(token===miniOreRequest)console.warn("Erz-Overlay:",error.message);
