@@ -304,6 +304,14 @@ body{padding:18px;max-width:100%}
  #miniApp #liveControls button{height:32px;min-width:85px;font-size:10px}
 }
 
+
+/* Smooth centered-player mode: pan map pixels, never rotate the texture. */
+#map,#miniOreCanvas{
+    transform:translate(var(--mini-center-x,0px),var(--mini-center-y,0px)) !important;
+    will-change:transform;
+}
+#miniCenterLock.active{background:#1a503d !important;border-color:#5ce6aa !important;color:#ddfff2 !important}
+
 </style>
 </head>
 
@@ -311,10 +319,10 @@ body{padding:18px;max-width:100%}
 <div id="miniApp">
  <div id="miniHead"><div><div id="miniHeadTitle">MINING MAP · LIVE</div><div id="liveStatus">WARTE AUF BLOXD…</div></div><div id="status">ENGINE LÄDT…</div></div>
  <div id="miniControls"><button id="miniMapButton" class="active">MAP</button><button id="miniYButton">Y</button><button id="miniY1Button" class="yellow">Y+1</button><button id="miniAllButton" class="red">DIAS / MOON</button><span id="miniRadius">R 30</span><button id="miniMinus">−</button><button id="miniPlus">+</button></div>
- <div id="liveControls"><input id="liveFollow" type="checkbox" checked hidden><input id="liveFollowY" type="checkbox" hidden><button id="miniFollowButton" class="active">FOLGEN: AN</button><button id="miniYFollowButton">Y LIVE: AUS</button><button id="liveCenter">ZENTRIEREN</button></div>
+ <div id="liveControls"><input id="liveFollow" type="checkbox" checked hidden><input id="liveFollowY" type="checkbox" hidden><button id="miniFollowButton" class="active">FOLGEN: AN</button><button id="miniCenterLock" type="button" aria-pressed="false">IMMER MITTE: AUS</button><button id="miniYFollowButton">Y LIVE: AUS</button><button id="liveCenter">ZENTRIEREN</button></div>
  <div id="miniScroll"><div id="miniMeta"><span id="miniSeedLabel">SEED 1234</span></div>
   <div id="main"><div id="mapWrap"><canvas id="map" width="640" height="640"></canvas><canvas id="miniOreCanvas" width="640" height="640"></canvas><div id="livePlayerMarker"><div class="ring"></div><span class="tag">DU</span></div></div>
-  <div id="miniCoords">X --- Y --- Z ---</div><div id="compass">−Z ←          +X ↑          +Z →</div><div id="hover">Maus über Karte → Block · Y · X/Z</div></div>
+  <div id="miniCoords">X --- Y --- Z ---</div><div id="compass">+Z ←          +X ↑          −Z →</div><div id="hover">Maus über Karte → Block · Y · X/Z</div></div>
   <div id="miniExtras"><strong>EXTRAS</strong><div id="miniNote">Blau = Diamant · Rot = Moonstone. Erze auf Y / Y+1 sind berechnete Positionen, keine Garantie für noch vorhandenes Erz.</div></div>
   <details id="miniManual"><summary>MANUELLE POSITION / EINSTELLUNGEN</summary><div id="top"><div id="title">BLOXD WORLD MAP</div>
     <label>SEED <input id="seed" value="1234"></label><label>X <input id="x" value="0"></label><label>Z <input id="z" value="0"></label><label>Y / MODE <input id="yMode" value="p"></label><label>RADIUS <input id="radius" value="30"></label><button id="load">WELT LADEN</button>
@@ -2951,7 +2959,7 @@ function renderSurface(
                 );
 
 
-            const px = row * blockSize;
+            const px = (size - 1 - row) * blockSize;
 
 
             const py = (size - 1 - col) * blockSize;
@@ -3204,7 +3212,7 @@ function drawGrid(centerX,centerZ,radius,size,blockSize){
     ctx.lineWidth=1.25;
     ctx.beginPath();
     for(let z=Math.floor((centerZ-radius)/32)*32;z<=centerZ+radius+1;z+=32){
-        const sx=(z-centerZ+radius)*blockSize+.5;
+        const sx=(centerZ+radius+1-z)*blockSize+.5;
         if(sx>=0&&sx<=canvas.width){ctx.moveTo(sx,0);ctx.lineTo(sx,canvas.height);}
     }
     for(let x=Math.floor((centerX-radius)/32)*32;x<=centerX+radius+1;x+=32){
@@ -3669,7 +3677,7 @@ canvas.addEventListener("mousemove",event=>{
     const screenX=clamp(Math.floor((event.clientX-rect.left)/rect.width*size),0,size-1);
     const screenY=clamp(Math.floor((event.clientY-rect.top)/rect.height*size),0,size-1);
     // Oben ist +X, links ist +Z.
-    const row=screenX;
+    const row=size-1-screenX;
     const col=size-1-screenY;
     const cell=currentSurface[row]?.[col];
     if(!cell)return;
@@ -3844,22 +3852,41 @@ let livePosition = null;
 let liveLastSeen = 0;
 let liveLastRebuild = -Infinity;
 let liveBuilding = false;
+let miniCenterLockEnabled = false;
+const miniMapWrapEl = document.getElementById("mapWrap");
 
 function liveDrawMarker(){
+    // Always translate both map canvases together. The player's marker stays untransformed.
     if (!livePosition || !currentView) {
-        liveMarkerEl.style.display = "none";
+        liveMarkerEl.style.display="none";
+        miniMapWrapEl.style.setProperty("--mini-center-x","0px");
+        miniMapWrapEl.style.setProperty("--mini-center-y","0px");
         return;
     }
-    const size = currentView.radius * 2 + 1;
-    const left = (livePosition.z - currentView.centerZ + currentView.radius + 0.5) / size * 100;
-    const top = (currentView.centerX + currentView.radius + 0.5 - livePosition.x) / size * 100;
-    if (left < 0 || left > 100 || top < 0 || top > 100) {
-        liveMarkerEl.style.display = "none";
+    const size=currentView.radius*2+1;
+    // Horizontal axis: +Z left. Vertical axis: +X up.
+    const left=(currentView.centerZ+currentView.radius+0.5-livePosition.z)/size*100;
+    const top=(currentView.centerX+currentView.radius+0.5-livePosition.x)/size*100;
+
+    if(miniCenterLockEnabled){
+        const dx=(50-left)*miniMapWrapEl.clientWidth/100;
+        const dy=(50-top)*miniMapWrapEl.clientHeight/100;
+        miniMapWrapEl.style.setProperty("--mini-center-x",dx.toFixed(2)+"px");
+        miniMapWrapEl.style.setProperty("--mini-center-y",dy.toFixed(2)+"px");
+        liveMarkerEl.style.left="50%";
+        liveMarkerEl.style.top="50%";
+        liveMarkerEl.style.display="block";
         return;
     }
-    liveMarkerEl.style.display = "block";
-    liveMarkerEl.style.left = left.toFixed(3) + "%";
-    liveMarkerEl.style.top = top.toFixed(3) + "%";
+    miniMapWrapEl.style.setProperty("--mini-center-x","0px");
+    miniMapWrapEl.style.setProperty("--mini-center-y","0px");
+    if(left<0||left>100||top<0||top>100){
+        liveMarkerEl.style.display="none";
+        return;
+    }
+    liveMarkerEl.style.display="block";
+    liveMarkerEl.style.left=left.toFixed(3)+"%";
+    liveMarkerEl.style.top=top.toFixed(3)+"%";
 }
 
 async function liveRecenter(force = false){
@@ -3876,8 +3903,12 @@ async function liveRecenter(force = false){
     );
     const yChanged = liveFollowYEl.checked &&
         (currentView.surface || currentView.y !== py);
-    if (!force && !yChanged && drift < 14) return;
-    if (!force && performance.now() - liveLastRebuild < 3500) return;
+    const followThreshold = miniCenterLockEnabled
+        ? Math.max(2, Math.floor(currentView.radius*0.28))
+        : 14;
+    const rebuildInterval = miniCenterLockEnabled ? 1400 : 3500;
+    if (!force && !yChanged && drift < followThreshold) return;
+    if (!force && performance.now() - liveLastRebuild < rebuildInterval) return;
 
     liveLastRebuild = performance.now();
     liveBuilding = true;
@@ -3963,7 +3994,18 @@ function miniInitUI(){
  miniAllButton.onclick=()=>{miniAll=!miniAll;miniButtons();void miniOres();};
  document.getElementById("miniMinus").onclick=()=>miniZoom(false);
  document.getElementById("miniPlus").onclick=()=>miniZoom(true);
- document.getElementById("miniFollowButton").onclick=()=>{liveFollowEl.checked=!liveFollowEl.checked;miniButtons();if(liveFollowEl.checked)void liveRecenter(true);};
+ document.getElementById("miniFollowButton").onclick=()=>{
+    liveFollowEl.checked=!liveFollowEl.checked;
+    if(!liveFollowEl.checked)miniCenterLockEnabled=false;
+    miniButtons();liveDrawMarker();
+    if(liveFollowEl.checked)void liveRecenter(true);
+ };
+ document.getElementById("miniCenterLock").onclick=()=>{
+    miniCenterLockEnabled=!miniCenterLockEnabled;
+    if(miniCenterLockEnabled)liveFollowEl.checked=true;
+    miniButtons();liveDrawMarker();
+    if(miniCenterLockEnabled)void liveRecenter(true);
+ };
  document.getElementById("miniYFollowButton").onclick=()=>{liveFollowYEl.checked=!liveFollowYEl.checked;yModeEl.value=liveFollowYEl.checked?String(livePosition?Math.floor(livePosition.y):-86):"p";miniButtons();void miniReload();};
  miniButtons();
  setInterval(miniButtons,1000);
@@ -3980,6 +4022,12 @@ function miniButtons(){
     miniSeedLabel.textContent="SEED "+seedEl.value;
     const followButton=document.getElementById("miniFollowButton");
     const yButton=document.getElementById("miniYFollowButton");
+    const centerButton=document.getElementById("miniCenterLock");
+    if(centerButton){
+        centerButton.textContent=miniCenterLockEnabled?"IMMER MITTE: AN":"IMMER MITTE: AUS";
+        centerButton.classList.toggle("active",miniCenterLockEnabled);
+        centerButton.setAttribute("aria-pressed",String(miniCenterLockEnabled));
+    }
     if(followButton){
         followButton.textContent=liveFollowEl.checked?"FOLGEN: AN":"FOLGEN: AUS";
         followButton.classList.toggle("active",liveFollowEl.checked);
@@ -4017,7 +4065,7 @@ function miniPoint(x,z,color,bright=false){
     const view=currentView;
     if(!view)return;
     const scale=miniOreCanvas.width/(view.radius*2+1);
-    const px=(z-view.centerZ+view.radius+.5)*scale;
+    const px=(view.centerZ+view.radius+.5-z)*scale;
     const py=(view.centerX+view.radius+.5-x)*scale;
     if(px<0||py<0||px>miniOreCanvas.width||py>miniOreCanvas.height)return;
     const w=Math.max(3,Math.min(12,scale*(bright?.74:.58)));
