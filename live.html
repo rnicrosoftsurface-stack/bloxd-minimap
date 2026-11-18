@@ -4000,8 +4000,11 @@ window.addEventListener("message", event => {
     if (![x, y, z].every(Number.isFinite)) return;
     if (Math.abs(x) > 1e9 || Math.abs(y) > 10000 || Math.abs(z) > 1e9) return;
 
+    const previousLayer = livePosition ? Math.floor(livePosition.y) : null;
     livePosition = {x, y, z};
     liveLastSeen = Date.now();
+    if (miniCoords) miniCoords.textContent = `X ${x.toFixed(2)}   Y ${y.toFixed(2)}   Z ${z.toFixed(2)}`;
+    if (previousLayer !== null && previousLayer !== Math.floor(y) && (miniY1 || miniAll)) void miniOres();
     liveStatusEl.textContent = `LIVE ✓ X ${x.toFixed(2)}  Y ${y.toFixed(2)}  Z ${z.toFixed(2)}`;
     liveStatusEl.style.color = "#4cff91";
 
