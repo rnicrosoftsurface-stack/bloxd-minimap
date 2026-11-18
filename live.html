@@ -4096,8 +4096,10 @@ function miniInitUI(){
     const compass=document.getElementById("compass");
     compass.textContent="+Z ←          +X ↑          → -Z";
     const hover=document.getElementById("hover");
-    main.insertBefore(miniCoords,hover);
-    main.insertBefore(compass,hover);
+    // hover war zuvor Geschwisterelement von #main. insertBefore
+    // mit einem fremden Referenzelement loest NotFoundError aus.
+    // Alle drei Elemente korrekt in das Kartenpanel verschieben.
+    main.append(miniCoords,compass,hover);
     const extras=document.createElement("div");extras.id="miniExtras";
     const extraTitle=document.createElement("strong");extraTitle.textContent="EXTRAS";
     extras.append(extraTitle);
@@ -4228,8 +4230,16 @@ async function miniOres(){
     }
 }
 
-miniInitUI();
-start();
+try {
+    miniInitUI();
+    void start();
+} catch (err) {
+    console.error("Live Minimap Initialisierung:", err);
+    const p = document.createElement("div");
+    p.style.cssText = "padding:18px;color:#ff8189;font:700 14px Arial";
+    p.textContent = "Kartenmenue konnte nicht gestartet werden: " + (err?.message || err);
+    document.body.appendChild(p);
+}
 
 })();
 </script>
