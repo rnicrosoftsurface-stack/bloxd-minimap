@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 
-<title>Bloxd World Map</title>
+<title>Bloxd Live Minimap</title>
 
 <style>
 :root{
@@ -195,6 +195,50 @@ button:hover{
 #livePlayerMarker{position:absolute;z-index:11;display:none;left:50%;top:50%;transform:translate(-50%,-50%);pointer-events:none}
 #livePlayerMarker .ring{width:20px;height:20px;background:#47eaff80;border:3px solid #6bf7ff;border-radius:50%;box-shadow:0 0 0 4px #000b,0 0 16px #6bf7ff}
 #livePlayerMarker .tag{position:absolute;left:22px;top:-1px;font:900 11px Arial,sans-serif;color:#80ffff;text-shadow:0 1px 3px #000,0 0 8px #000;white-space:nowrap}
+
+
+/* Bloxd Minimap v3.9 inspired layout — live edition */
+html,body{min-height:100%;margin:0;background:#071019;color:#eef6ff;font-family:Arial,sans-serif}
+body{padding:14px;display:block}
+#miniApp{width:355px;max-width:calc(100vw - 28px);height:540px;max-height:calc(100dvh - 28px);overflow:hidden;border:1px solid #26394d;border-radius:14px;background:rgba(7,16,25,.98);box-shadow:0 16px 45px #0008;display:flex;flex-direction:column}
+#miniHead{min-height:48px;display:flex;align-items:center;justify-content:space-between;gap:5px;padding:7px 10px 4px}
+#miniHeadTitle{font:900 13px Arial,sans-serif}
+#miniHead #liveStatus{display:block;font:800 9px Consolas,monospace;color:#52ff93;margin-top:3px;white-space:normal}
+#miniHead #status{font:800 9px Consolas,monospace;max-width:128px;text-align:right;margin:0;line-height:1.35}
+#miniControls{display:flex;align-items:center;flex-wrap:wrap;gap:5px;min-height:66px;padding:4px 10px 7px;border-bottom:1px solid #1f3142}
+#miniControls button,#miniExtras button{height:28px;min-width:28px;border:1px solid #26384a;border-radius:7px;background:#0b1722;color:#eaf4ff;font:800 10px Arial,sans-serif;padding:0 8px;cursor:pointer}
+#miniControls button.active,#miniExtras button.active{background:#173850;border-color:#57cfff;color:#dff8ff}
+#miniControls button.yellow.active{border-color:#ffd166}
+#miniControls button.red.active{border-color:#ff5f6d}
+#miniRadius{margin-left:auto;font:800 10px Consolas,monospace;color:#a9bdd0}
+#miniScroll{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;scrollbar-width:thin;padding:8px 12px 12px}
+#miniMeta{font:800 8px Consolas,monospace;color:#8fa2b7;margin-bottom:6px}
+#main{padding:0!important}
+#mapWrap{position:relative;width:329px!important;max-width:100%;height:329px!important;overflow:hidden;border:1px solid #203548;border-radius:9px;background:#07111a;margin:0 auto!important}
+#map,#miniOreCanvas{position:absolute;top:0;left:0;display:block;width:100%!important;height:100%!important;image-rendering:pixelated;transform:rotate(-90deg);transform-origin:center}
+#map{border:0!important;border-radius:0!important;box-shadow:none!important}
+#miniOreCanvas{pointer-events:none}
+#livePlayerMarker{z-index:12;pointer-events:none}
+#livePlayerMarker .ring{width:12px;height:12px;background:#6eeaff;border:1.5px solid white;border-radius:50%;box-shadow:0 0 10px #6eeaff}
+#livePlayerMarker .tag{left:15px;top:-3px;font:900 10px Arial,sans-serif;color:#8bffff}
+#miniCoords{margin-top:8px;font:700 10px Consolas,monospace;color:#b7c9da;white-space:normal}
+#compass{position:static!important;display:block!important;text-align:center!important;margin:5px 0 8px!important;padding:0!important;border:none!important;background:transparent!important;font:800 9px Consolas,monospace!important;color:#7fa0bb!important;pointer-events:none}
+#hover{width:100%!important;margin:0!important;padding:7px 9px!important;min-height:35px;font:700 10px/1.5 Consolas,monospace!important;overflow-wrap:anywhere}
+#info{display:none!important}
+#miniExtras{border-top:1px solid #1f3142;margin-top:12px;padding-top:10px}
+#miniExtras strong{display:block;color:#91a8bd;font:900 10px Arial,sans-serif;letter-spacing:.5px;margin-bottom:8px}
+#miniExtras #liveControls{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+#miniExtras #liveControls label{font:700 10px Arial,sans-serif;color:#a9bdd0}
+#miniExtras #liveControls input{width:15px;height:15px}
+#miniNote{font:700 9px/1.45 Consolas,monospace;color:#7f97aa;margin-top:8px}
+#miniManual{margin-top:12px;border:1px solid #213548;border-radius:8px;background:#08131e;overflow:hidden}
+#miniManual summary{cursor:pointer;padding:8px 10px;font:900 10px Arial,sans-serif;color:#b7c9da}
+#miniManual #top{position:static!important;display:flex!important;flex-wrap:wrap!important;align-items:center!important;gap:6px!important;padding:7px!important;background:transparent!important;border:0!important;backdrop-filter:none!important}
+#miniManual #top #title{display:none!important}
+#miniManual #top label{font-size:10px!important}
+#miniManual #top input{width:75px!important;height:28px!important;font:700 11px Arial,sans-serif!important}
+#miniManual #top button{font-size:10px;height:28px}
+#miniManual #top #radius{width:55px!important}
 
 </style>
 </head>
@@ -3168,7 +3212,7 @@ function renderSurface(
     );
 
 
-    drawCenter();
+    // Spielerposition wird als eigener Live-Marker angezeigt.
 }
 
 
@@ -3592,7 +3636,7 @@ async function generate(){
                 64
             ),
 
-            8,
+            3,
 
             128
         );
@@ -3824,8 +3868,8 @@ async function generate(){
         );
 
 
-    statusEl.style.color =
-        "#4cff91";
+    statusEl.style.color = "#4cff91";
+    miniOnMapGenerated();
 }
 
 
@@ -3863,9 +3907,7 @@ canvas.addEventListener(
                 Math.floor(
 
                     (
-                        event.clientX
-                        -
-                        rect.left
+                        rect.bottom - event.clientY
                     )
 
                     /
@@ -3887,9 +3929,7 @@ canvas.addEventListener(
                 Math.floor(
 
                     (
-                        event.clientY
-                        -
-                        rect.top
+                        rect.right - event.clientX
                     )
 
                     /
@@ -4027,7 +4067,9 @@ async function start(){
     try{
 
         readURL();
-
+        // Der Live-Bridge-Link enthaelt eine Y-Zahl; standardmaessig die MAP-Oberflaeche anzeigen.
+        yModeEl.value = 'p';
+        liveFollowYEl.checked = false;
 
         statusEl.textContent =
             "ENGINE LÄDT…";
@@ -4136,8 +4178,8 @@ function liveDrawMarker(){
         return;
     }
     const size = currentView.radius * 2 + 1;
-    const left = (livePosition.x - currentView.centerX + currentView.radius + 0.5) / size * 100;
-    const top = (livePosition.z - currentView.centerZ + currentView.radius + 0.5) / size * 100;
+    const left = (currentView.centerZ + currentView.radius + 0.5 - livePosition.z) / size * 100;
+    const top = (currentView.centerX + currentView.radius + 0.5 - livePosition.x) / size * 100;
     if (left < 0 || left > 100 || top < 0 || top > 100) {
         liveMarkerEl.style.display = "none";
         return;
@@ -4218,6 +4260,183 @@ setInterval(() => {
     if (liveFollowEl.checked) void liveRecenter();
 }, 750);
 
+
+// =====================================================
+// MINIMAP STYLE + ORE CONTROLS (External site only)
+// =====================================================
+const MINI_ZOOMS=[3,5,10,15,20,25,30,35,40,45,50];
+let miniY1=false, miniAll=false, miniOreCanvas=null, miniOreCtx=null;
+let miniOreRequest=0;
+let miniApp=null, miniCoords=null, miniRad=null, miniYButton=null;
+let miniMapButton=null,miniY1Button=null,miniAllButton=null,miniSeedLabel=null;
+
+function miniInitUI(){
+    miniApp=document.createElement("div");
+    miniApp.id="miniApp";
+    document.body.insertBefore(miniApp,document.body.firstChild);
+    const header=document.createElement("div");
+    header.id="miniHead";
+    const headLeft=document.createElement("div");
+    const title=document.createElement("div");
+    title.id="miniHeadTitle";title.textContent="MINING MAP";
+    headLeft.append(title,liveStatusEl);
+    header.append(headLeft,statusEl);
+    const controls=document.createElement("div");controls.id="miniControls";
+    function addButton(label,act,extraClass=""){
+        const b=document.createElement("button");b.textContent=label;
+        if(extraClass)b.className=extraClass;
+        b.addEventListener("click",act);controls.appendChild(b);return b;
+    }
+    miniMapButton=addButton("MAP",()=>{
+        liveFollowYEl.checked=false;
+        yModeEl.value="p";
+        miniButtons();
+        void miniReload();
+    });
+    miniYButton=addButton("Y",()=>{
+        liveFollowYEl.checked=true;
+        yModeEl.value=String(livePosition?Math.floor(livePosition.y):-86);
+        miniButtons();void miniReload();
+    });
+    miniY1Button=addButton("Y+1",()=>{
+        miniY1=!miniY1;miniButtons();void miniOres();
+    },"yellow");
+    miniAllButton=addButton("ALLE ERZE",()=>{
+        miniAll=!miniAll;miniButtons();void miniOres();
+    },"red");
+    miniRad=document.createElement("span");miniRad.id="miniRadius";controls.appendChild(miniRad);
+    addButton("−",()=>miniZoom(false));
+    addButton("+",()=>miniZoom(true));
+    const scroll=document.createElement("div");scroll.id="miniScroll";
+    const meta=document.createElement("div");meta.id="miniMeta";
+    miniSeedLabel=document.createElement("span");meta.appendChild(miniSeedLabel);
+    const main=document.getElementById("main");
+    const wrap=document.getElementById("mapWrap");
+    miniOreCanvas=document.createElement("canvas");miniOreCanvas.id="miniOreCanvas";
+    miniOreCanvas.width=canvas.width;miniOreCanvas.height=canvas.height;
+    miniOreCtx=miniOreCanvas.getContext("2d");
+    wrap.insertBefore(miniOreCanvas,liveMarkerEl);
+    miniCoords=document.createElement("div");miniCoords.id="miniCoords";
+    miniCoords.textContent="X ---   Y ---   Z ---";
+    const compass=document.getElementById("compass");
+    compass.textContent="+Z ←          +X ↑          → -Z";
+    const hover=document.getElementById("hover");
+    main.insertBefore(miniCoords,hover);
+    main.insertBefore(compass,hover);
+    const extras=document.createElement("div");extras.id="miniExtras";
+    const extraTitle=document.createElement("strong");extraTitle.textContent="EXTRAS";
+    extras.append(extraTitle,document.getElementById("liveControls"));
+    const note=document.createElement("div");note.id="miniNote";
+    note.textContent="Blau = Diamant · Rot = Moonstone. Erzpositionen stammen aus der generierten Welt.";
+    extras.appendChild(note);
+    const manual=document.createElement("details");manual.id="miniManual";
+    const summary=document.createElement("summary");
+    summary.textContent="MANUELLE POSITION / EINSTELLUNGEN";
+    manual.append(summary,document.getElementById("top"));
+    scroll.append(meta,main,extras,manual);
+    miniApp.append(header,controls,scroll);
+    miniButtons();
+    setInterval(miniButtons,1000);
+}
+function miniButtons(){
+    if(!miniMapButton)return;
+    const surface=yModeEl.value.trim().toLowerCase()==="p";
+    miniMapButton.classList.toggle("active",surface);
+    miniYButton.classList.toggle("active",!surface);
+    miniYButton.textContent=livePosition?"Y "+Math.floor(livePosition.y):"Y";
+    miniY1Button.classList.toggle("active",miniY1);
+    miniAllButton.classList.toggle("active",miniAll);
+    miniRad.textContent="R "+radiusEl.value;
+    miniSeedLabel.textContent="SEED "+seedEl.value;
+}
+async function miniReload(){
+    ++miniOreRequest;
+    try{await generate();}
+    catch(error){console.warn("Karte konnte nicht aktualisiert werden:",error);}
+    miniButtons();
+    liveDrawMarker();
+}
+function miniZoom(inward){
+    const r=Number(radiusEl.value);
+    const a=inward?MINI_ZOOMS.filter(v=>v<r):MINI_ZOOMS.filter(v=>v>r);
+    const next=inward?a.at(-1):a[0];
+    if(next===undefined)return;
+    radiusEl.value=String(next);
+    miniButtons();void miniReload();
+}
+function miniOnMapGenerated(){
+    miniButtons();
+    liveDrawMarker();
+    void miniOres();
+}
+function miniOreColor(id){
+    const num=Number(id);
+    return num===45?"#1e9dff":num===465?"#ff2338":null;
+}
+function miniPoint(x,z,color,bright=false){
+    const view=currentView;
+    if(!view)return;
+    const scale=miniOreCanvas.width/(view.radius*2+1);
+    const px=(x-view.centerX+view.radius+.5)*scale;
+    const py=(z-view.centerZ+view.radius+.5)*scale;
+    if(px<0||py<0||px>miniOreCanvas.width||py>miniOreCanvas.height)return;
+    const w=Math.max(3,Math.min(12,scale*(bright?.74:.58)));
+    miniOreCtx.fillStyle=color;
+    miniOreCtx.fillRect(px-w/2,py-w/2,w,w);
+    miniOreCtx.strokeStyle=bright?"#fff":"#000b";
+    miniOreCtx.strokeRect(px-w/2+.5,py-w/2+.5,Math.max(1,w-1),Math.max(1,w-1));
+}
+async function miniOres(){
+    const token=++miniOreRequest;
+    if(!miniOreCtx)return;
+    miniOreCtx.clearRect(0,0,miniOreCanvas.width,miniOreCanvas.height);
+    if((!miniY1&&!miniAll)||!currentView||!worker)return;
+    const v={...currentView};
+    const py=livePosition?Math.floor(livePosition.y):(v.y??-86);
+    const cx0=floorDiv(v.centerX-v.radius,32), cx1=floorDiv(v.centerX+v.radius,32);
+    const cz0=floorDiv(v.centerZ-v.radius,32), cz1=floorDiv(v.centerZ+v.radius,32);
+    const levels=new Set();
+    if(miniY1)levels.add(floorDiv(py+1,32));
+    if(miniAll)[-4,-3,-2].forEach(y=>levels.add(y));
+    const jobs=[];
+    for(let cx=cx0;cx<=cx1;cx++){
+        for(let cz=cz0;cz<=cz1;cz++){
+            for(const cy of levels){
+                jobs.push(requestChunk(v.seed,cx,cy,cz));
+            }
+        }
+    }
+    try{
+        await Promise.race([
+            Promise.all(jobs),
+            new Promise((_,reject)=>setTimeout(()=>reject(Error("Erz-Timeout")),18000))
+        ]);
+        if(token!==miniOreRequest||currentView?.centerX!==v.centerX||currentView?.centerZ!==v.centerZ||currentView?.radius!==v.radius)return;
+        if(miniAll){
+            for(let cx=cx0;cx<=cx1;cx++)for(let cz=cz0;cz<=cz1;cz++)for(const cy of [-4,-3,-2]){
+                const ch=chunks.get(chunkKey(v.seed,cx,cy,cz));
+                if(!ch)continue;
+                for(let i=0;i<ch.data.length;i++){
+                    const color=miniOreColor(ch.data[i]);if(!color)continue;
+                    const x=cx*32+Math.floor(i/1024);
+                    const z=cz*32+(i%32);
+                    miniPoint(x,z,color);
+                }
+            }
+        }
+        if(miniY1){
+            for(let x=v.centerX-v.radius;x<=v.centerX+v.radius;x++)
+            for(let z=v.centerZ-v.radius;z<=v.centerZ+v.radius;z++){
+                const color=miniOreColor(getBlock(v.seed,x,py+1,z));
+                if(color)miniPoint(x,z,color,true);
+            }
+        }
+    }catch(error){
+        if(token===miniOreRequest)console.warn("Erz-Overlay:",error.message);
+    }
+}
+
+miniInitUI();
 start();
 
 })();
