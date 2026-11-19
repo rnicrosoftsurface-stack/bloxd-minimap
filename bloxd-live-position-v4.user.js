@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Bloxd Live Position Bridge v4 PIXEL ONLY
 // @namespace    bloxd-minimap-safe
-// @version      4.0.0
+// @version      4.1.0
 // @description  Liest die sichtbaren XYZ-Pixel ohne Canvas-Hook, dazu kleines Live-Menue.
 // @match        https://bloxd.io/*
 // @match        https://bloxd.dev/*
@@ -35,12 +35,28 @@
         let img;
         try{img=canvas.getContext("2d")?.getImageData(0,0,canvas.width,canvas.height);}
         catch(_){lastReadError="Pixel nicht lesbar";return null;}
-        if(!img || img.width!==253 || img.height!==17){
-            lastReadError="Andere Canvas-Groesse";return null;
+        if(!img || img.width<40 || img.width>1600 || img.height<12 || img.height>150){
+            lastReadError="Canvas nicht lesbar";return null;
         }
-        const w=img.width, d=img.data, col=new Array(w).fill(false);
+        const w=img.width, h=img.height, d=img.data, col=new Array(w).fill(false);
+        // Find actual bright font rows regardless of canvas width and padding.
+        const yRows=[];
+        for(let y=0;y<h;y++){
+            let count=0;
+            for(let x=0;x<w;x++){
+                const i=(y*w+x)*4;
+                if(d[i+3]>100 && d[i]>175 && d[i+1]>175 && d[i+2]>175)count++;
+            }
+            if(count>=2)yRows.push(y);
+        }
+        if(!yRows.length){lastReadError="Keine Schriftpixel gefunden";return null;}
+        const y0=yRows[0],y1=yRows[yRows.length-1],inkHeight=y1-y0+1;
+        if(inkHeight<8||inkHeight>40){
+            lastReadError="Unbekannte Schriftgroesse ("+inkHeight+"px)";
+            return null;
+        }
         for(let x=0;x<w;x++){
-            for(let y=1;y<13;y++){
+            for(let y=y0;y<=y1;y++){
                 const i=(y*w+x)*4;
                 if(d[i+3]>100&&d[i]>175&&d[i+1]>175&&d[i+2]>175){
                     col[x]=true;break;
@@ -70,7 +86,8 @@
         if(groups.length!==3){lastReadError="XYZ-Gruppen nicht erkannt";return null;}
         function matchGlyph(l,r){
             const bits=[],len=r-l+1;
-            for(let y=1;y<13;y++){
+            for(let rowIndex=0;rowIndex<12;rowIndex++){
+                const y=y0+Math.min(inkHeight-1,Math.floor((rowIndex+.5)*inkHeight/12));
                 let row=0;
                 for(let u=0;u<9;u++){
                     const x=l+Math.min(len-1,Math.floor((u+.5)*len/9));
@@ -93,7 +110,7 @@
             return score<=17?best:"?";
         }
         const raw=groups.map(g=>g.map(([l,r])=>matchGlyph(l,r)).join(""));
-        if(raw.some(v=>v.includes("?")||!/^-?\d+(?:\.\d+)?$/.test(v))){
+        if(raw.some(v=>v.includes("?")||!/^-?\d+\.\d{2}$/.test(v))){
             lastReadError="Ziffer nicht sicher erkannt";return null;
         }
         const [x,y,z]=raw.map(Number);
@@ -163,7 +180,7 @@
         const header = document.createElement("div");
         header.style.cssText = "display:flex;align-items:center;justify-content:space-between;gap:7px";
         const title = document.createElement("strong");
-        title.textContent = "LIVE MAP v4";
+        title.textContent = "LIVE MAP v4.1";
         title.style.cssText = "font:900 12px Arial;white-space:nowrap";
         statusEl = document.createElement("span");
         statusEl.style.cssText = "font:800 9px Consolas;flex:1;text-align:right";
