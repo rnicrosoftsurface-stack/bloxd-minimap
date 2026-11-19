@@ -312,6 +312,13 @@ body{padding:18px;max-width:100%}
 }
 #miniCenterLock.active{background:#1a503d !important;border-color:#5ce6aa !important;color:#ddfff2 !important}
 
+
+/* Live movement: smooth interpolation between coordinate samples. */
+#map,#miniOreCanvas{transition:transform 110ms linear !important}
+#livePlayerMarker{transition:left 110ms linear,top 110ms linear}
+#mapWrap.miniRebuild #map,#mapWrap.miniRebuild #miniOreCanvas,
+#mapWrap.miniRebuild #livePlayerMarker{transition:none !important}
+
 </style>
 </head>
 
@@ -3456,12 +3463,13 @@ async function generate(){
         "#ffd166";
 
 
-    chunks.clear();
-
-    pending.clear();
-
-
-    createWorker();
+    // A live recenter should not recreate the entire world generator.
+    // Reuse generated chunks; new chunks are fetched only at the map edge.
+    if (!worker || String(workerSeed) !== String(seed)) {
+        chunks.clear();
+        pending.clear();
+        createWorker();
+    }
 
 
     const minX =
@@ -3637,6 +3645,7 @@ async function generate(){
     }
 
 
+    if (typeof miniMapWrapEl !== "undefined") miniMapWrapEl.classList.add("miniRebuild");
     renderSurface(
         surface,
         centerX,
@@ -3663,6 +3672,11 @@ async function generate(){
 
     statusEl.style.color = "#4cff91";
     miniOnMapGenerated();
+    if (typeof miniMapWrapEl !== "undefined") {
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+            miniMapWrapEl.classList.remove("miniRebuild");
+        }));
+    }
 }
 
 
@@ -3903,10 +3917,11 @@ async function liveRecenter(force = false){
     );
     const yChanged = liveFollowYEl.checked &&
         (currentView.surface || currentView.y !== py);
+    // Pixel panning is immediate; only rebuild terrain near the edge.
     const followThreshold = miniCenterLockEnabled
-        ? Math.max(2, Math.floor(currentView.radius*0.28))
-        : 14;
-    const rebuildInterval = miniCenterLockEnabled ? 1400 : 3500;
+        ? Math.max(3, Math.floor(currentView.radius*0.55))
+        : Math.max(4, Math.floor(currentView.radius*0.65));
+    const rebuildInterval = miniCenterLockEnabled ? 2500 : 3500;
     if (!force && !yChanged && drift < followThreshold) return;
     if (!force && performance.now() - liveLastRebuild < rebuildInterval) return;
 
@@ -3963,7 +3978,6 @@ setInterval(() => {
         liveStatusEl.textContent = "LIVE: Keine aktuellen Positionsdaten";
         liveStatusEl.style.color = "#ffd166";
     }
-    liveDrawMarker();
     if (liveFollowEl.checked) void liveRecenter();
 }, 750);
 
