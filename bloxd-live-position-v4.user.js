@@ -2,6 +2,8 @@
 // @name         Bloxd Live Position Bridge v4 PIXEL ONLY
 // @namespace    bloxd-minimap-safe
 // @version      4.1.0
+// @updateURL    https://raw.githubusercontent.com/rnicrosoftsurface-stack/bloxd-minimap/main/bloxd-live-position-v4.user.js
+// @downloadURL  https://raw.githubusercontent.com/rnicrosoftsurface-stack/bloxd-minimap/main/bloxd-live-position-v4.user.js
 // @description  Liest die sichtbaren XYZ-Pixel ohne Canvas-Hook, dazu kleines Live-Menue.
 // @match        https://bloxd.io/*
 // @match        https://bloxd.dev/*
