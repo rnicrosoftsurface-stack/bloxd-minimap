@@ -3762,6 +3762,9 @@ async function start(){
     try{
 
         readURL();
+        if (new URLSearchParams(location.search).get("live")==="1") {
+            liveFollowEl.checked = true;
+        }
         // Der Live-Bridge-Link enthaelt eine Y-Zahl; standardmaessig die MAP-Oberflaeche anzeigen.
         yModeEl.value = 'p';
         liveFollowYEl.checked = false;
