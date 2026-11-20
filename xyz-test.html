@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Bloxd XYZ – Internet-Test</title>
+<style>
+:root{color-scheme:dark}
+*{box-sizing:border-box}
+body{min-height:100vh;margin:0;background:#071019;color:#edf7ff;font-family:Inter,system-ui,-apple-system,Segoe UI,Arial,sans-serif;display:grid;place-items:center;padding:18px}
+main{width:min(620px,100%);background:linear-gradient(160deg,#101f31,#0a141e);border:1px solid #284359;border-radius:22px;padding:clamp(20px,5vw,34px);box-shadow:0 24px 80px #0007}
+h1{font-size:clamp(24px,5vw,32px);margin:0 0 8px;font-weight:800;letter-spacing:-1px}
+.subtitle{color:#90b0c7;font-size:13px;margin:0 0 26px}
+.pill{display:inline-flex;gap:8px;align-items:center;border:1px solid #355069;border-radius:99px;padding:7px 12px;font-size:12px;color:#b5cad8}
+.dot{width:8px;height:8px;background:#ffc86b;border-radius:50%}
+.pill.good .dot{background:#5cf3aa;box-shadow:0 0 11px #3be29b}
+.pill.bad .dot{background:#fd8087}
+#state{font-weight:650}
+.coords{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:23px 0}
+.coord{border:1px solid #29445c;background:#0c1d2b;border-radius:15px;padding:17px 10px;text-align:center;min-width:0}
+.coord label{display:block;font-size:12px;letter-spacing:.15em;color:#84a7c1;font-weight:750;margin-bottom:9px}
+.coord strong{display:block;font-size:clamp(16px,3.8vw,24px);letter-spacing:-.6px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+#meta{color:#85a5bd;font-size:13px;line-height:1.7;margin-top:10px;min-height:40px}
+#test{color:#94a7bb;font-size:12px;margin:16px 0 0;min-height:19px}
+footer{border-top:1px solid #243b4e;padding-top:18px;margin-top:21px;display:flex;justify-content:space-between;align-items:center;gap:12px}
+button{border:1px solid #396780;background:#17374b;color:#dcf6ff;border-radius:9px;padding:10px 14px;cursor:pointer;font-weight:700}
+small{color:#7593a9}
+#hint{display:none;color:#ffb2b2;font-size:13px;line-height:1.6}
+@media(max-width:420px){.coords{gap:6px}.coord{padding:14px 5px}.coord strong{font-size:17px}}
+</style>
+</head>
+<body>
+<main>
+<h1>Bloxd · Live XYZ</h1>
+<p class="subtitle">Nur Koordinaten · Von jedem Gerät · Testansicht</p>
+<div class="pill" id="pill"><span class="dot"></span><span id="state">Verbinde zum Internet …</span></div>
+<section class="coords" aria-label="Live Koordinaten">
+ <div class="coord"><label>X</label><strong id="x">—</strong></div>
+ <div class="coord"><label>Y</label><strong id="y">—</strong></div>
+ <div class="coord"><label>Z</label><strong id="z">—</strong></div>
+</section>
+<div id="meta">Warte auf Daten aus Bloxd …</div>
+<div id="test">Noch kein Testsignal.</div>
+<p id="hint">Kein Linkschlüssel vorhanden. Öffne den vollständigen persönlichen Link mit dem Schlüssel hinter #.</p>
+<footer>
+ <small>Gelesen aus der sichtbaren Koordinatenanzeige</small>
+ <button id="copy">Link kopieren</button>
+</footer>
+</main>
+<script>
+(() => {
+ "use strict";
+ const broker = "wss://broker.emqx.io:8084/mqtt";
+ const key = location.hash.slice(1).trim();
+ const el=id=>document.getElementById(id);
+ const enc=new TextEncoder(),dec=new TextDecoder();
+ const topic="bloxd/coords/"+key;
+ let ws=null,ready=false,ever=false,lastTime=0,retry=0;
+ function str(s){const b=enc.encode(s);return Uint8Array.from([b.length>>8,b.length&255,...b]);}
+ function pack(head,...parts){
+   const payload=Uint8Array.from(parts.flatMap(v=>Array.from(v)));
+   let len=payload.length;const rem=[];
+   do{let b=len%128;len=Math.floor(len/128);if(len)b|=128;rem.push(b);}while(len);
+   return Uint8Array.from([head,...rem,...payload]);
+ }
+ function send(...a){if(ws?.readyState===1)ws.send(pack(...a));}
+ function label(txt,kind){el("state").textContent=txt;el("pill").className="pill "+(kind||"");}
+ function connect(){
+   if(!/^[a-f0-9]{40,64}$/i.test(key)){el("hint").style.display="block";label("Linkschlüssel fehlt","bad");return;}
+   label("Internetverbindung wird aufgebaut …");
+   let socket;
+   try{socket=new WebSocket(broker,"mqtt");socket.binaryType="arraybuffer";}
+   catch(e){label("WebSocket nicht möglich","bad");return;}
+   ws=socket;
+   socket.onopen=()=>{
+     const client="bloxd-view-"+Math.random().toString(16).slice(2,12);
+     send(0x10,str("MQTT"),[4,2,0,45],str(client));
+   };
+   socket.onmessage=e=>{
+     const data=new Uint8Array(e.data);
+     if(data.length<2)return;
+     const type=data[0]>>4;
+     let shift=0,len=0,i=1,b;
+     do{b=data[i++];len+=(b&127)*(2**shift);shift+=7;}while(b&128&&i<data.length);
+     if(type===2){
+       if(data[i+1]===0){
+         ready=true;label("Internet verbunden · Warte auf Bloxd","good");
+         send(0x82,[0,1],str(topic),[0]);
+       }else label("Broker lehnt Verbindung ab","bad");
+     }else if(type===3){
+       if(i+2>data.length)return;
+       const n=(data[i]<<8)+data[i+1],t=dec.decode(data.slice(i+2,i+2+n));
+       if(t!==topic)return;
+       const qos=(data[0]>>1)&3;
+       const start=i+2+n+(qos?2:0);
+       try{handle(JSON.parse(dec.decode(data.slice(start))));}catch(_){}
+     }
+   };
+   socket.onclose=()=>{
+     if(ws!==socket)return;
+     ready=false;label("Verbindung unterbrochen · Verbinde erneut","bad");
+     clearTimeout(retry);retry=setTimeout(connect,2500);
+   };
+   socket.onerror=()=>label("Netzwerkfehler","bad");
+ }
+ function handle(d){
+   if(!d||typeof d!=="object"||!Number.isFinite(d.t))return;
+   if(d.type==="test"){
+     el("test").textContent="TESTSIGNAL EMPFANGEN · "+new Date(d.t).toLocaleTimeString("de-DE");
+     return;
+   }
+   if(d.type!=="xyz"||![d.x,d.y,d.z].every(Number.isFinite))return;
+   if(d.t<lastTime)return;
+   lastTime=d.t;ever=true;
+   for(const axis of ["x","y","z"])el(axis).textContent=d[axis].toFixed(2);
+   refreshAge();
+ }
+ function refreshAge(){
+   if(!ever)return;
+   const age=Math.max(0,Math.floor((Date.now()-lastTime)/1000));
+   el("meta").textContent="Letzte Position: vor "+age+" s · "+new Date(lastTime).toLocaleTimeString("de-DE");
+   if(age<12 && ready)label("LIVE · Koordinaten empfangen","good");
+   else label("Letzte Koordinaten veraltet","bad");
+ }
+ setInterval(()=>{
+   if(ws?.readyState===1&&ready)send(0xc0);
+ },19000);
+ setInterval(refreshAge,1000);
+ el("copy").onclick=async()=>{
+   try{await navigator.clipboard.writeText(location.href);el("copy").textContent="Kopiert ✓";}
+   catch(_){el("copy").textContent="Link aus Adressleiste kopieren";}
+ };
+ connect();
+})();
+</script>
+</body>
+</html>
