@@ -428,6 +428,7 @@ let originalTextureOverrides = {};
 
 const originalTextureImages =
     new Map();
+const pendingTextureImages = new Map();
 
 const textureKeyCache =
     new Map();
@@ -1479,6 +1480,7 @@ function loadTextureImage(key){
     }
 
 
+    if (pendingTextureImages.has(key)) return pendingTextureImages.get(key);
     const source =
         originalTextureOverrides[
             key
@@ -1493,7 +1495,7 @@ function loadTextureImage(key){
     }
 
 
-    return new Promise(
+    const loading = new Promise(
         resolve => {
 
             const image =
@@ -1503,35 +1505,27 @@ function loadTextureImage(key){
             image.onload =
                 () => {
 
-                    originalTextureImages.set(
-                        key,
-                        image
-                    );
-
-                    resolve(
-                        image
-                    );
+                    originalTextureImages.set(key,image);
+                    pendingTextureImages.delete(key);
+                    resolve(image);
                 };
 
 
             image.onerror =
                 () => {
 
-                    console.warn(
-                        "Bloxd texture failed:",
-                        key
-                    );
-
-                    resolve(
-                        null
-                    );
+                    console.warn("Bloxd texture failed:",key);
+                    originalTextureImages.set(key,null);
+                    pendingTextureImages.delete(key);
+                    resolve(null);
                 };
 
 
-            image.src =
-                source;
+            image.src = source;
         }
     );
+    pendingTextureImages.set(key,loading);
+    return loading;
 }
 
 
@@ -2215,12 +2209,16 @@ function buildSurface(
                 col;
 
 
-            const column =
-                findSurfaceColumn(
-                    seed,
-                    worldX,
-                    worldZ
-                );
+            // Reuse overlapping map cells when the viewport moves.
+            const old = currentView && currentView.surface &&
+                String(currentView.seed)===String(seed) &&
+                currentView.radius===radius ? currentView : null;
+            const oldR = old ? worldZ - (old.centerZ - old.radius) : -1;
+            const oldC = old ? worldX - (old.centerX - old.radius) : -1;
+            const recycled = oldR>=0 && oldC>=0 &&
+                oldR<currentSurface.length && oldC<currentSurface.length
+                ? currentSurface[oldR][oldC] : null;
+            const column = recycled || findSurfaceColumn(seed,worldX,worldZ);
 
 
             surface[row][col] =
@@ -3387,7 +3385,7 @@ function updateURL(
 // GENERATE
 // =====================================================
 
-async function generate(){
+async function generate(liveRefresh=false){
 
     const seed =
         normalSeed(
@@ -3639,9 +3637,11 @@ async function generate(){
             "ORIGINAL-TEXTUREN…";
 
 
-        await preloadSurfaceTextures(
-            surface
-        );
+        if (liveRefresh) {
+            void preloadSurfaceTextures(surface).catch(console.warn);
+        } else {
+            await preloadSurfaceTextures(surface);
+        }
     }
 
 
@@ -3833,7 +3833,14 @@ async function start(){
             "#4cff91";
 
 
-        await generate();
+        miniEngineReady = true;
+        const params = new URLSearchParams(location.search);
+        if (params.get("live")==="1" && (!params.has("x") || !params.has("z"))) {
+            statusEl.textContent = "READY ✓ WARTE AUF LIVE-XYZ";
+            statusEl.style.color = "#4cff91";
+        } else {
+            await generate();
+        }
 
     }
     catch(error){
@@ -3866,6 +3873,7 @@ let livePosition = null;
 let liveLastSeen = 0;
 let liveLastRebuild = -Infinity;
 let liveBuilding = false;
+let miniEngineReady = false;
 let miniCenterLockEnabled = false;
 const miniMapWrapEl = document.getElementById("mapWrap");
 
@@ -3905,22 +3913,23 @@ function liveDrawMarker(){
 
 async function liveRecenter(force = false){
     if (!livePosition || liveBuilding) return;
-    if (!currentView || !statusEl.textContent.startsWith("READY")) return;
+    if (!miniEngineReady || (currentView && !statusEl.textContent.startsWith("READY"))) return;
 
     const px = Math.floor(livePosition.x);
     const py = Math.floor(livePosition.y);
     const pz = Math.floor(livePosition.z);
 
-    const drift = Math.max(
-        Math.abs(px - currentView.centerX),
-        Math.abs(pz - currentView.centerZ)
-    );
-    const yChanged = liveFollowYEl.checked &&
+    const drift = currentView ? Math.max(
+        Math.abs(px-currentView.centerX),
+        Math.abs(pz-currentView.centerZ)
+    ) : Infinity;
+    const yChanged = liveFollowYEl.checked && currentView &&
         (currentView.surface || currentView.y !== py);
     // Pixel panning is immediate; only rebuild terrain near the edge.
+    const r = currentView?.radius ?? 30;
     const followThreshold = miniCenterLockEnabled
-        ? Math.max(3, Math.floor(currentView.radius*0.55))
-        : Math.max(4, Math.floor(currentView.radius*0.65));
+        ? Math.max(5, Math.floor(r*0.55))
+        : Math.max(5, Math.floor(r*0.65));
     const rebuildInterval = miniCenterLockEnabled ? 2500 : 3500;
     if (!force && !yChanged && drift < followThreshold) return;
     if (!force && performance.now() - liveLastRebuild < rebuildInterval) return;
@@ -3932,7 +3941,7 @@ async function liveRecenter(force = false){
     if (liveFollowYEl.checked) yModeEl.value = String(py);
 
     try {
-        await generate();
+        await generate(true);
     } catch (error) {
         console.warn("Live-Karte:", error);
     } finally {
@@ -3964,7 +3973,7 @@ window.addEventListener("message", event => {
     }
 
     liveDrawMarker();
-    if (liveFollowEl.checked) void liveRecenter();
+    if (liveFollowEl.checked || !currentView) void liveRecenter();
 
     try {
         event.source?.postMessage({type:"BLOXD_POSITION_ACK_V1"}, event.origin);
@@ -3978,8 +3987,8 @@ setInterval(() => {
         liveStatusEl.textContent = "LIVE: Keine aktuellen Positionsdaten";
         liveStatusEl.style.color = "#ffd166";
     }
-    if (liveFollowEl.checked) void liveRecenter();
-}, 750);
+    if (liveFollowEl.checked && !currentView && miniEngineReady) void liveRecenter();
+}, 1000);
 
 
 // =====================================================
